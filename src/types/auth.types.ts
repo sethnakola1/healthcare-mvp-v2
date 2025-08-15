@@ -41,3 +41,63 @@ export interface LoginCredentials {
   email: string;
   password: string;
 }
+
+
+
+// src/types/auth.types.ts
+export interface User {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: UserRole;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export enum UserRole {
+  ADMIN = 'admin',
+  DOCTOR = 'doctor',
+  NURSE = 'nurse',
+  PATIENT = 'patient',
+  STAFF = 'staff'
+}
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface LoginResponse {
+  success: boolean;
+  user?: User;
+  error?: string;
+  message?: string;
+}
+
+export interface AuthResponse {
+  success: boolean;
+  user?: User;
+  error?: string;
+}
+
+export interface PasswordResetRequest {
+  email: string;
+}
+
+export interface PasswordResetResponse {
+  success: boolean;
+  message: string;
+  error?: string;
+}
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export interface ApiError {
+  message: string;
+  status: number;
+  code?: string;
+}

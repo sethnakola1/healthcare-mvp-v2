@@ -1,156 +1,193 @@
-import { apiService, ApiResponse } from './api.service';
-import { SecurityUtils } from '../utils/security.utils';
-import { BusinessRole, UserProfile } from '../types/auth.types';
-import { parseBusinessRole, isValidUserProfile } from '../utils/typeGuards';
+// src/services/auth.service.ts
+import {
+  User,
+  LoginRequest,
+  LoginResponse,
+  AuthResponse,
+  PasswordResetRequest,
+  PasswordResetResponse,
+  ChangePasswordRequest,
+  ApiError
+} from '../types/auth.types';
 
-export interface LoginRequest {
-  email: string;
-  password: string;
-}
-
-export interface LoginResponse {
-  accessToken: string;
-  refreshToken: string;
-  tokenType: string;
-  expiresIn: number;
-  userId: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  role: string;
-  loginTime: string;
-}
-
-export interface ApiUserProfile {
-  userId: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  fullName: string;
-  username: string;
-  role: string;
-  roleDisplayName: string;
-  isActive: boolean;
-  emailVerified: boolean;
-  phoneNumber?: string;
-  territory?: string;
-  partnerCode?: string;
-  lastLogin?: string;
-  createdAt: string;
-}
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api';
 
 class AuthService {
-  private readonly LOGIN_ATTEMPT_KEY = 'login_attempts';
-  private isGettingCurrentUser = false; // Prevent multiple simultaneous calls
-
-  async login(credentials: LoginRequest): Promise<ApiResponse<LoginResponse>> {
-    // Rate limiting check
-    if (!SecurityUtils.checkRateLimit(this.LOGIN_ATTEMPT_KEY, 5, 15 * 60 * 1000)) {
-      throw new Error('Too many login attempts. Please try again later.');
-    }
-
-    // Input validation
-    const sanitizedEmail = SecurityUtils.sanitizeInput(credentials.email);
+  private async makeRequest<T>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<T> {
+    const url = `${API_BASE_URL}${endpoint}`;
     
-    if (!SecurityUtils.validateEmail(sanitizedEmail)) {
-      throw new Error('Invalid email format');
-    }
+    const defaultOptions: RequestInit = {
+      credentials: 'include', // Include HTTP-only cookies
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest', // CSRF protection
+        ...options.headers,
+      },
+    };
 
-    const passwordValidation = SecurityUtils.validatePassword(credentials.password);
-    if (!passwordValidation.isValid) {
-      throw new Error('Invalid password format');
-    }
+    const config = { ...defaultOptions, ...options };
 
     try {
-      const response = await apiService.post<LoginResponse>('/api/auth/login', {
-        email: sanitizedEmail,
-        password: credentials.password,
-      });
+      const response = await fetch(url, config);
 
-      if (response.success) {
-        // Reset rate limiting on successful login
-        SecurityUtils.resetRateLimit(this.LOGIN_ATTEMPT_KEY);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const error: ApiError = {
+          message: errorData.message || `HTTP error! status: ${response.status}`,
+          status: response.status,
+          code: errorData.code
+        };
+        throw error;
       }
+
+      return await response.json();
+    } catch (error) {
+      if (error instanceof Error && 'status' in error) {
+        throw error; // Re-throw API errors
+      }
+
+      // Network or other errors
+      throw {
+        message: 'Network error or server unavailable',
+        status: 0
+      } as ApiError;
+    }
+  }
+
+  async login(email: string, password: string): Promise<LoginResponse> {
+    try {
+      // Input validation
+      if (!email || !email.includes('@')) {
+        return { success: false, error: 'Please enter a valid email address' };
+      }
+
+      if (!password || password.length < 6) {
+        return { success: false, error: 'Password must be at least 6 characters long' };
+      }
+
+      const loginData: LoginRequest = {
+        email: email.trim().toLowerCase(),
+        password
+      };
+
+      const response = await this.makeRequest<LoginResponse>('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify(loginData),
+      });
 
       return response;
     } catch (error) {
+      const apiError = error as ApiError;
+      return {
+        success: false,
+        error: apiError.message || 'Login failed. Please try again.'
+      };
+    }
+  }
+
+  async logout(): Promise<void> {
+    try {
+      await this.makeRequest('/auth/logout', {
+        method: 'POST',
+      });
+    } catch (error) {
+      // Even if logout fails on backend, we should clear client state
+      console.error('Logout error:', error);
+    }
+  }
+
+  async getCurrentUser(): Promise<User | null> {
+    try {
+      const response = await this.makeRequest<AuthResponse>('/auth/me');
+      return response.user || null;
+    } catch (error) {
+      const apiError = error as ApiError;
+
+      // If unauthorized, user is not logged in
+      if (apiError.status === 401) {
+        return null;
+      }
+
       throw error;
     }
   }
 
-  async getCurrentUser(): Promise<ApiResponse<UserProfile>> {
-    // Prevent multiple simultaneous calls
-    if (this.isGettingCurrentUser) {
-      throw new Error('Already getting current user');
-    }
+  async refreshToken(): Promise<AuthResponse> {
+    return this.makeRequest<AuthResponse>('/auth/refresh', {
+      method: 'POST',
+    });
+  }
 
-    this.isGettingCurrentUser = true;
-
+  async requestPasswordReset(email: string): Promise<PasswordResetResponse> {
     try {
-      const response = await apiService.get<ApiUserProfile>('/api/auth/me');
-
-      if (response.success && response.data) {
-        const userProfile: UserProfile = {
-          userId: response.data.userId,
-          email: response.data.email,
-          firstName: response.data.firstName,
-          lastName: response.data.lastName,
-          fullName: response.data.fullName,
-          username: response.data.username,
-          role: parseBusinessRole(response.data.role),
-          roleDisplayName: response.data.roleDisplayName,
-          isActive: response.data.isActive,
-          emailVerified: response.data.emailVerified,
-          phoneNumber: response.data.phoneNumber,
-          territory: response.data.territory,
-          partnerCode: response.data.partnerCode,
-          lastLogin: response.data.lastLogin,
-          createdAt: response.data.createdAt,
-        };
-
-        if (!isValidUserProfile(userProfile)) {
-          throw new Error('Invalid user profile received from server');
-        }
-
+      if (!email || !email.includes('@')) {
         return {
-          ...response,
-          data: userProfile
+          success: false,
+          message: '',
+          error: 'Please enter a valid email address'
         };
       }
 
-      return response as ApiResponse<UserProfile>;
+      const resetData: PasswordResetRequest = {
+        email: email.trim().toLowerCase()
+      };
+
+      const response = await this.makeRequest<PasswordResetResponse>('/auth/reset-password', {
+        method: 'POST',
+        body: JSON.stringify(resetData),
+      });
+
+      return response;
     } catch (error) {
-      throw error;
-    } finally {
-      this.isGettingCurrentUser = false;
+      const apiError = error as ApiError;
+      return {
+        success: false,
+        message: '',
+        error: apiError.message || 'Failed to send reset email. Please try again.'
+      };
     }
   }
 
-  async refreshToken(): Promise<ApiResponse<LoginResponse>> {
-    return apiService.post<LoginResponse>('/api/auth/refresh');
-  }
+  async changePassword(passwordData: ChangePasswordRequest): Promise<AuthResponse> {
+    try {
+      if (!passwordData.currentPassword) {
+        throw new Error('Current password is required');
+      }
 
-  async logout(): Promise<ApiResponse<string>> {
-    const response = await apiService.post<string>('/api/auth/logout');
-    SecurityUtils.resetRateLimit(this.LOGIN_ATTEMPT_KEY);
-    return response;
-  }
+      if (!passwordData.newPassword || passwordData.newPassword.length < 6) {
+        throw new Error('New password must be at least 6 characters long');
+      }
 
-  async validateToken(): Promise<ApiResponse<boolean>> {
-    return apiService.get<boolean>('/api/auth/validate');
-  }
-
-  async changePassword(currentPassword: string, newPassword: string): Promise<ApiResponse<string>> {
-    const passwordValidation = SecurityUtils.validatePassword(newPassword);
-    if (!passwordValidation.isValid) {
-      throw new Error(passwordValidation.errors.join(', '));
+      return this.makeRequest<AuthResponse>('/auth/change-password', {
+        method: 'PUT',
+        body: JSON.stringify(passwordData),
+      });
+    } catch (error) {
+      const apiError = error as ApiError;
+      throw new Error(apiError.message || 'Failed to change password');
     }
+  }
 
-    return apiService.post<string>('/api/auth/change-password', {
-      currentPassword,
-      newPassword,
+  async verifyEmail(token: string): Promise<AuthResponse> {
+    return this.makeRequest<AuthResponse>(`/auth/verify-email/${token}`, {
+      method: 'POST',
     });
+  }
+
+  // Utility method to check if user is authenticated
+  async isAuthenticated(): Promise<boolean> {
+    try {
+      const user = await this.getCurrentUser();
+      return !!user;
+    } catch {
+      return false;
+    }
   }
 }
 
 export const authService = new AuthService();
+
+export { LoginRequest };

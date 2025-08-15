@@ -1,147 +1,74 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Provider } from 'react-redux';
-import { store } from './store/store';
-import { useAppDispatch, useAppSelector } from './store/hooks';
-import { getCurrentUser } from './store/slices/authSlice';
-import { BusinessRole } from './types/auth.types';
+// import { AuthProvider } from './contexts/AuthContext';
+import { useAuth } from './hooks/useAuth';
+// import LoginPage from './components/LoginPage';
+// import Dashboard from './components/Dashboard';
+// import LoadingSpinner from './components/LoadingSpinner';
+import './App.css';
+import { LoadingSpinner } from './components/common';
+import LoginPage from './components/auth/LoginPage';
+import Dashboard from './components/dashboard/Dashboard';
+import { AuthProvider } from './contexts/AuthContext';
 
-// Components
-import LoginForm from './components/auth/LoginForm';
-import ProtectedRoute from './components/auth/ProtectedRoute';
-import SuperAdminDashboard from './components/dashboard/SuperAdminDashboard';
-import { LoadingSpinner } from './components/common/LoadingSpinner';
-import ErrorBoundary from './components/common/ErrorBoundary';
-import Layout from './components/common/Layout';
-// import DebugPanel from './components/debug/DebugPanel';
+// Protected Route Component
+const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const auth = useAuth();
+  const isAuthenticated = auth?.isAuthenticated ?? false;
+  const isLoading = auth?.isLoading ?? false;
 
-// Initialize debug utilities
-import './utils/debug';
-// import DebugPanel from './components/debug/DebugPanel';
-
-const AppContent: React.FC = () => {
-  const dispatch = useAppDispatch();
-  const { isAuthenticated, isLoading, user } = useAppSelector((state) => state.auth);
-  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
-
-  useEffect(() => {
-    // Try to get current user on app load, but only once
-    if (!initialLoadComplete) {
-      dispatch(getCurrentUser()).finally(() => {
-        setInitialLoadComplete(true);
-      });
-    }
-  }, [dispatch, initialLoadComplete]);
-
-  const getDashboardRoute = (role: BusinessRole): string => {
-    switch (role) {
-      case BusinessRole.SUPER_ADMIN:
-        return '/dashboard/super-admin';
-      case BusinessRole.TECH_ADVISOR:
-        return '/dashboard/tech-advisor';
-      case BusinessRole.HOSPITAL_ADMIN:
-        return '/dashboard/hospital-admin';
-      case BusinessRole.DOCTOR:
-        return '/dashboard/doctor';
-      case BusinessRole.NURSE:
-        return '/dashboard/nurse';
-      case BusinessRole.PATIENT:
-        return '/dashboard/patient';
-      default:
-        return '/dashboard';
-    }
-  };
-
-  // Show loading only during initial load
-  if (isLoading && !initialLoadComplete) {
+  if (isLoading) {
     return <LoadingSpinner />;
   }
 
+  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
+};
+
+// Public Route Component (redirect to dashboard if already authenticated)
+const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <LoadingSpinner />;
+  }
+
+  return !isAuthenticated ? <>{children}</> : <Navigate to="/dashboard" replace />;
+};
+
+function AppContent() {
   return (
-    <Router>
+    <div className="App">
       <Routes>
-        {/* Public Routes */}
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route 
           path="/login" 
           element={
-            isAuthenticated && user ? (
-              <Navigate to={getDashboardRoute(user.role as BusinessRole)} replace />
-            ) : (
-              <LoginForm />
-            )
+            <PublicRoute>
+              <LoginPage />
+            </PublicRoute>
           } 
         />
-
-        {/* Protected Routes */}
         <Route
-          path="/dashboard/super-admin"
+          path="/dashboard"
           element={
-            <ProtectedRoute requiredRoles={[BusinessRole.SUPER_ADMIN]}>
-              <Layout>
-                <SuperAdminDashboard />
-              </Layout>
+            <ProtectedRoute>
+              <Dashboard />
             </ProtectedRoute>
           }
         />
-
-        {/* Unauthorized Route */}
-        <Route 
-          path="/unauthorized" 
-          element={
-            <div className="min-h-screen flex items-center justify-center">
-              <div className="text-center">
-                <h1 className="text-2xl font-bold text-gray-900">Unauthorized</h1>
-                <p className="text-gray-600 mt-2">You don't have permission to access this page.</p>
-              </div>
-            </div>
-          } 
-        />
-
-        {/* Default Route - only redirect if initial load is complete */}
-        <Route 
-          path="/" 
-          element={
-            initialLoadComplete ? (
-              isAuthenticated && user ? (
-                <Navigate to={getDashboardRoute(user.role as BusinessRole)} replace />
-              ) : (
-                <Navigate to="/login" replace />
-              )
-            ) : (
-              <LoadingSpinner />
-            )
-          } 
-        />
-
-        {/* Catch all route */}
-        <Route 
-          path="*" 
-          element={
-            <div className="min-h-screen flex items-center justify-center">
-              <div className="text-center">
-                <h1 className="text-2xl font-bold text-gray-900">Page Not Found</h1>
-                <p className="text-gray-600 mt-2">The page you're looking for doesn't exist.</p>
-              </div>
-            </div>
-          } 
-        />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
-
-      {/* Debug Panel - only shows in development */}
-      {/* <DebugPanel /> */}
-    </Router>
+    </div>
   );
-};
+}
 
 function App() {
   return (
-    <Provider store={store}>
-      <ErrorBoundary>
-        <div className="App">
-          <AppContent />
-        </div>
-      </ErrorBoundary>
-    </Provider>
+    <Router>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </Router>
   );
 }
 
