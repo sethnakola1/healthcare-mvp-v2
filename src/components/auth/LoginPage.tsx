@@ -1,6 +1,7 @@
 // src/components/LoginPage.tsx
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAppDispatch, useAppSelector } from '../../hooks/redux';
+import { loginUser, clearError } from '../../store/slices/authSlice';
 import './LoginPage.css';
 
 interface FormErrors {
@@ -10,21 +11,29 @@ interface FormErrors {
 }
 
 const LoginPage: React.FC = () => {
-  const { login, isLoading } = useAuth();
+  const dispatch = useAppDispatch();
+  const { isLoading, error } = useAppSelector((state) => state.auth);
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   });
-  const [errors, setErrors] = useState<FormErrors>({});
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Clear errors when user starts typing
   useEffect(() => {
-    if (errors.email || errors.password) {
-      setErrors(prev => ({ ...prev, email: '', password: '' }));
+    if (formErrors.email || formErrors.password) {
+      setFormErrors(prev => ({ ...prev, email: '', password: '' }));
     }
-  }, [formData.email, formData.password]);
+  }, [formData.email, formData.password, formErrors.email, formErrors.password]);
+
+  // Clear Redux error when component unmounts
+  useEffect(() => {
+    return () => {
+      dispatch(clearError());
+    };
+  }, [dispatch]);
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
@@ -43,7 +52,7 @@ const LoginPage: React.FC = () => {
       newErrors.password = 'Password must be at least 6 characters long';
     }
 
-    setErrors(newErrors);
+    setFormErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
@@ -63,19 +72,17 @@ const LoginPage: React.FC = () => {
     }
 
     setIsSubmitting(true);
-    setErrors({});
+    dispatch(clearError());
 
     try {
-      const result = await login(formData.email, formData.password);
-
-      if (!result.success) {
-        setErrors({ general: result.error || 'Login failed. Please try again.' });
-      }
-      // Success is handled by the AuthContext and routing
+      await dispatch(loginUser({
+        email: formData.email,
+        password: formData.password
+      })).unwrap();
+      // Success is handled by Redux and routing
     } catch (error) {
-      setErrors({
-        general: 'An unexpected error occurred. Please try again.'
-      });
+      // Error is handled by Redux state
+      console.error('Login failed:', error);
     } finally {
       setIsSubmitting(false);
     }
@@ -101,9 +108,9 @@ const LoginPage: React.FC = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="login-form" noValidate>
-          {errors.general && (
+          {error && (
             <div className="error-banner" role="alert">
-              {errors.general}
+              {error}
             </div>
           )}
 
@@ -117,15 +124,15 @@ const LoginPage: React.FC = () => {
               name="email"
               value={formData.email}
               onChange={handleInputChange}
-              className={`form-input ${errors.email ? 'error' : ''}`}
+              className={`form-input ${formErrors.email ? 'error' : ''}`}
               placeholder="Enter your email"
               autoComplete="email"
               disabled={isSubmitting || isLoading}
-              aria-describedby={errors.email ? 'email-error' : undefined}
+              aria-describedby={formErrors.email ? 'email-error' : undefined}
             />
-            {errors.email && (
+            {formErrors.email && (
               <span id="email-error" className="error-text" role="alert">
-                {errors.email}
+                {formErrors.email}
               </span>
             )}
           </div>
@@ -141,11 +148,11 @@ const LoginPage: React.FC = () => {
                 name="password"
                 value={formData.password}
                 onChange={handleInputChange}
-                className={`form-input ${errors.password ? 'error' : ''}`}
+                className={`form-input ${formErrors.password ? 'error' : ''}`}
                 placeholder="Enter your password"
                 autoComplete="current-password"
                 disabled={isSubmitting || isLoading}
-                aria-describedby={errors.password ? 'password-error' : undefined}
+                aria-describedby={formErrors.password ? 'password-error' : undefined}
               />
               <button
                 type="button"
@@ -169,9 +176,9 @@ const LoginPage: React.FC = () => {
                 )}
               </button>
             </div>
-            {errors.password && (
+            {formErrors.password && (
               <span id="password-error" className="error-text" role="alert">
-                {errors.password}
+                {formErrors.password}
               </span>
             )}
           </div>

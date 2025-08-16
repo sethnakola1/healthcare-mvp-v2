@@ -1,14 +1,16 @@
 // src/components/Dashboard.tsx
 import React from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import './Dashboard.css';
+import { useAppDispatch, useAppSelector } from '../../hooks/redux';
+import { logoutUser } from '../../store/slices/authSlice';
+
 
 const Dashboard: React.FC = () => {
-  const { user, logout } = useAuth();
+  const dispatch = useAppDispatch();
+  const { user } = useAppSelector((state) => state.auth);
 
   const handleLogout = async () => {
     try {
-      await logout();
+      await dispatch(logoutUser()).unwrap();
     } catch (error) {
       console.error('Logout failed:', error);
     }
@@ -123,6 +125,7 @@ const Dashboard: React.FC = () => {
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                   <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
                   <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+                  </svg>
                 </div>
               </div>
               <div className="activity-content">
@@ -158,7 +161,6 @@ const Dashboard: React.FC = () => {
               </div>
             </div>
           </div>
-        </div>
       </main>
     </div>
   );

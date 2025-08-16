@@ -1,9 +1,12 @@
 import React, { useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { getCurrentUser, validateSession, updateActivity } from '../../store/slices/authSlice';
+
 import { BusinessRole } from '../../types/auth.types';
-import { LoadingSpinner } from '../common/LoadingSpinner';
+import { getCurrentUser } from '../../store/slices/authSlice';
+import { LoadingSpinner } from '../common';
+// import { LoadingSpinner } from '../common/LoadingSpinner';
+// import { getCurrentUser, validateSession, updateActivity } from '../store/slices/authSlice';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -61,7 +64,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // Check role-based access
   if (requiredRoles && requiredRoles.length > 0) {
-    const hasRequiredRole = requiredRoles.includes(user.role as BusinessRole);
+    const hasRequiredRole = requiredRoles.includes(user.role as unknown as BusinessRole);
     if (!hasRequiredRole) {
       return <Navigate to="/unauthorized" replace />;
     }
@@ -71,3 +74,11 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 };
 
 export default ProtectedRoute;
+
+function updateActivity(): any {
+  throw new Error('Function not implemented.');
+}
+function validateSession(): any {
+  throw new Error('Function not implemented.');
+}
+

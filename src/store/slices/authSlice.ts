@@ -1,87 +1,105 @@
+// src/store/slices/authSlice.ts
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { authService, LoginRequest } from '../../services/auth.service';
-import { AuthState, BusinessRole, UserProfile } from '../../types/auth.types';
+import { authService } from '../../services/auth.service';
+import { User, LoginResponse } from '../../types/auth.types';
 
-// Session timeout (15 minutes)
-const SESSION_TIMEOUT = 15 * 60 * 1000;
+interface AuthState {
+  user: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  error: string | null;
+}
+
+const initialState: AuthState = {
+  user: null,
+  isAuthenticated: false,
+  isLoading: false,
+  error: null,
+};
 
 // Async thunks
-export const loginUser = createAsyncThunk(
-  'auth/login',
-  async (credentials: LoginRequest, { rejectWithValue }) => {
+export const loginUser = createAsyncThunk<
+  User,
+  { email: string; password: string },
+  { rejectValue: string }
+>(
+  'auth/loginUser',
+  async ({ email, password }, { rejectWithValue }) => {
     try {
-      const response = await authService.login(credentials);
-      if (response.success && response.data) {
-        // Get full user profile after login
-        const profileResponse = await authService.getCurrentUser();
-        return profileResponse.data;
+      const response: LoginResponse = await authService.login(email, password);
+
+      if (response.success && response.user) {
+        return response.user;
+      } else {
+        return rejectWithValue(response.error || 'Login failed');
       }
-      throw new Error(response.error || 'Login failed');
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Login failed');
+    } catch (error) {
+      return rejectWithValue(
+        error instanceof Error ? error.message : 'An unexpected error occurred'
+      );
     }
   }
 );
 
-export const getCurrentUser = createAsyncThunk(
+export const getCurrentUser = createAsyncThunk<
+  User,
+  void,
+  { rejectValue: string }
+>(
   'auth/getCurrentUser',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await authService.getCurrentUser();
-      if (response.success) {
-        return response.data;
+      const user = await authService.getCurrentUser();
+      if (user) {
+        return user;
+      } else {
+        return rejectWithValue('No user found');
       }
-      throw new Error(response.error || 'Failed to get user profile');
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to get user profile');
+    } catch (error) {
+      return rejectWithValue(
+        error instanceof Error ? error.message : 'Failed to get current user'
+      );
     }
   }
 );
 
-export const logoutUser = createAsyncThunk(
-  'auth/logout',
+export const logoutUser = createAsyncThunk<
+  void,
+  void,
+  { rejectValue: string }
+>(
+  'auth/logoutUser',
   async (_, { rejectWithValue }) => {
     try {
       await authService.logout();
-      return null;
-    } catch (error: any) {
-      // Still logout on client side even if server call fails
-      return null;
+    } catch (error) {
+      // Even if logout fails on backend, we should clear client state
+      console.error('Logout error:', error);
     }
   }
 );
 
-export const validateSession = createAsyncThunk(
-  'auth/validateSession',
-  async (_, { rejectWithValue, getState }) => {
+export const refreshAuth = createAsyncThunk<
+  User,
+  void,
+  { rejectValue: string }
+>(
+  'auth/refreshAuth',
+  async (_, { rejectWithValue }) => {
     try {
-      const state = getState() as { auth: AuthState };
-      const lastActivity = state.auth.lastActivity;
-      const now = Date.now();
-      
-      // Check session timeout
-      if (now - lastActivity > SESSION_TIMEOUT) {
-        throw new Error('Session expired');
+      const response = await authService.refreshToken();
+      if (response.success && response.user) {
+        return response.user;
+      } else {
+        return rejectWithValue(response.error || 'Token refresh failed');
       }
-
-      const response = await authService.validateToken();
-      if (response.success) {
-        return response.data;
-      }
-      throw new Error('Invalid session');
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Session validation failed');
+    } catch (error) {
+      return rejectWithValue(
+        error instanceof Error ? error.message : 'Token refresh failed'
+      );
     }
   }
 );
-
-const initialState: AuthState = {
-  isAuthenticated: false,
-  isLoading: false,
-  user: null,
-  error: null,
-  lastActivity: Date.now(),
-};
 
 const authSlice = createSlice({
   name: 'auth',
@@ -90,93 +108,88 @@ const authSlice = createSlice({
     clearError: (state) => {
       state.error = null;
     },
-    updateActivity: (state) => {
-      state.lastActivity = Date.now();
-    },
-    sessionExpired: (state) => {
-      state.isAuthenticated = false;
+    resetAuth: (state) => {
       state.user = null;
-      state.error = 'Session expired. Please login again.';
+      state.isAuthenticated = false;
+      state.isLoading = false;
+      state.error = null;
     },
   },
   extraReducers: (builder) => {
+    // Login user
     builder
-      // Login
       .addCase(loginUser.pending, (state) => {
         state.isLoading = true;
         state.error = null;
       })
-      .addCase(loginUser.fulfilled, (state, action: PayloadAction<UserProfile>) => {
+      .addCase(loginUser.fulfilled, (state, action: PayloadAction<User>) => {
         state.isLoading = false;
+        state.user = action.payload;
         state.isAuthenticated = true;
-        // Create a clean user object to avoid immer issues
-        state.user = {
-          userId: action.payload.userId,
-          email: action.payload.email,
-          firstName: action.payload.firstName,
-          lastName: action.payload.lastName,
-          fullName: action.payload.fullName,
-          username: action.payload.username,
-          role: action.payload.role as BusinessRole,
-          roleDisplayName: action.payload.roleDisplayName,
-          isActive: action.payload.isActive,
-          emailVerified: action.payload.emailVerified,
-          phoneNumber: action.payload.phoneNumber,
-          territory: action.payload.territory,
-          partnerCode: action.payload.partnerCode,
-          lastLogin: action.payload.lastLogin,
-          createdAt: action.payload.createdAt,
-        };
         state.error = null;
-        state.lastActivity = Date.now();
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.isLoading = false;
-        state.isAuthenticated = false;
         state.user = null;
-        state.error = action.payload as string;
+        state.isAuthenticated = false;
+        state.error = action.payload || 'Login failed';
+      });
+
+    // Get current user
+    builder
+      .addCase(getCurrentUser.pending, (state) => {
+        state.isLoading = true;
       })
-      // Get current user
-      .addCase(getCurrentUser.fulfilled, (state, action: PayloadAction<UserProfile>) => {
+      .addCase(getCurrentUser.fulfilled, (state, action: PayloadAction<User>) => {
+        state.isLoading = false;
+        state.user = action.payload;
         state.isAuthenticated = true;
-        // Create a clean user object
-        state.user = {
-          userId: action.payload.userId,
-          email: action.payload.email,
-          firstName: action.payload.firstName,
-          lastName: action.payload.lastName,
-          fullName: action.payload.fullName,
-          username: action.payload.username,
-          role: action.payload.role as BusinessRole,
-          roleDisplayName: action.payload.roleDisplayName,
-          isActive: action.payload.isActive,
-          emailVerified: action.payload.emailVerified,
-          phoneNumber: action.payload.phoneNumber,
-          territory: action.payload.territory,
-          partnerCode: action.payload.partnerCode,
-          lastLogin: action.payload.lastLogin,
-          createdAt: action.payload.createdAt,
-        };
-        state.lastActivity = Date.now();
-      })
-      .addCase(getCurrentUser.rejected, (state) => {
-        state.isAuthenticated = false;
-        state.user = null;
-      })
-      // Logout
-      .addCase(logoutUser.fulfilled, (state) => {
-        state.isAuthenticated = false;
-        state.user = null;
         state.error = null;
       })
-      // Validate session
-      .addCase(validateSession.rejected, (state) => {
-        state.isAuthenticated = false;
+      .addCase(getCurrentUser.rejected, (state) => {
+        state.isLoading = false;
         state.user = null;
-        state.error = 'Session expired';
+        state.isAuthenticated = false;
+        state.error = null; // Don't show error for this, as it's expected when not logged in
+      });
+
+    // Logout user
+    builder
+      .addCase(logoutUser.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(logoutUser.fulfilled, (state) => {
+        state.isLoading = false;
+        state.user = null;
+        state.isAuthenticated = false;
+        state.error = null;
+      })
+      .addCase(logoutUser.rejected, (state) => {
+        state.isLoading = false;
+        state.user = null;
+        state.isAuthenticated = false;
+        state.error = null; // Don't show error for logout
+      });
+
+    // Refresh auth
+    builder
+      .addCase(refreshAuth.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(refreshAuth.fulfilled, (state, action: PayloadAction<User>) => {
+        state.isLoading = false;
+        state.user = action.payload;
+        state.isAuthenticated = true;
+        state.error = null;
+      })
+      .addCase(refreshAuth.rejected, (state) => {
+        state.isLoading = false;
+        state.user = null;
+        state.isAuthenticated = false;
+        state.error = null; // Don't show error for refresh failure
       });
   },
 });
 
-export const { clearError, updateActivity, sessionExpired } = authSlice.actions;
+export const { clearError, resetAuth } = authSlice.actions;
 export default authSlice.reducer;

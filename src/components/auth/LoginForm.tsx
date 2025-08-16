@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+// import { useForm } from 'react-hook-form';
 import { Eye, EyeOff, Lock, Mail, AlertCircle } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { loginUser, clearError } from '../../store/slices/authSlice';
@@ -255,3 +255,7 @@ export const LoginForm: React.FC = () => {
 };
 
 export default LoginForm;
+
+function useForm<T>(arg0: { mode: string; }): { register: any; handleSubmit: any; formState: { errors: any; isValid: any; }; setError: any; watch: any; } {
+  throw new Error('Function not implemented.');
+}

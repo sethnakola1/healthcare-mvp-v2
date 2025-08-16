@@ -50,10 +50,9 @@ class AuthService {
       }
 
       // Network or other errors
-      throw {
-        message: 'Network error or server unavailable',
-        status: 0
-      } as ApiError;
+      const networkError = new Error('Network error or server unavailable') as Error & ApiError;
+      networkError.status = 0;
+      throw networkError;
     }
   }
 
@@ -190,4 +189,4 @@ class AuthService {
 
 export const authService = new AuthService();
 
-export { LoginRequest };
+export type { LoginRequest };

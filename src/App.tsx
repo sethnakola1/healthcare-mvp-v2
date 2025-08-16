@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-// import { AuthProvider } from './contexts/AuthContext';
-import { useAuth } from './hooks/useAuth';
+import { Provider } from 'react-redux';
+import { store } from './store/store';
+import { useAppDispatch, useAppSelector } from './hooks/redux';
+import { getCurrentUser } from './store/slices/authSlice';
 // import LoginPage from './components/LoginPage';
 // import Dashboard from './components/Dashboard';
 // import LoadingSpinner from './components/LoadingSpinner';
@@ -9,13 +11,10 @@ import './App.css';
 import { LoadingSpinner } from './components/common';
 import LoginPage from './components/auth/LoginPage';
 import Dashboard from './components/dashboard/Dashboard';
-import { AuthProvider } from './contexts/AuthContext';
 
 // Protected Route Component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const auth = useAuth();
-  const isAuthenticated = auth?.isAuthenticated ?? false;
-  const isLoading = auth?.isLoading ?? false;
+  const { isAuthenticated, isLoading } = useAppSelector((state) => state.auth);
 
   if (isLoading) {
     return <LoadingSpinner />;
@@ -26,7 +25,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 // Public Route Component (redirect to dashboard if already authenticated)
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading } = useAppSelector((state) => state.auth);
 
   if (isLoading) {
     return <LoadingSpinner />;
@@ -36,6 +35,18 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 };
 
 function AppContent() {
+  const dispatch = useAppDispatch();
+  const { isLoading } = useAppSelector((state) => state.auth);
+
+  useEffect(() => {
+    // Check authentication status on app start
+    dispatch(getCurrentUser());
+  }, [dispatch]);
+
+  if (isLoading) {
+    return <LoadingSpinner message="Checking authentication..." />;
+  }
+
   return (
     <div className="App">
       <Routes>
@@ -64,11 +75,11 @@ function AppContent() {
 
 function App() {
   return (
-    <Router>
-      <AuthProvider>
+    <Provider store={store}>
+      <Router>
         <AppContent />
-      </AuthProvider>
-    </Router>
+      </Router>
+    </Provider>
   );
 }
 
