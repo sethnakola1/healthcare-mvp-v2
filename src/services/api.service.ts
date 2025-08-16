@@ -1,54 +1,77 @@
 // src/services/api.service.ts
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 
-class ApiService {
-  private api: AxiosInstance;
+export class ApiService {
+  private static instance: ApiService;
+  private axiosInstance: AxiosInstance;
+  private csrfToken: string | null = null;
 
-  constructor() {
-    this.api = axios.create({
-      baseURL: process.env.REACT_APP_API_URL || 'http://localhost:8080/api',
-      timeout: 10000,
+  private constructor() {
+    this.axiosInstance = axios.create({
+      baseURL: process.env.REACT_APP_API_BASE_URL,
+      timeout: 30000,
       headers: {
         'Content-Type': 'application/json',
-      },
+        'X-Requested-With': 'XMLHttpRequest' // CSRF protection
+      }
     });
 
     this.setupInterceptors();
   }
 
+  public static getInstance(): ApiService {
+    if (!ApiService.instance) {
+      ApiService.instance = new ApiService();
+    }
+    return ApiService.instance;
+  }
+
   private setupInterceptors(): void {
     // Request interceptor
-    this.api.interceptors.request.use(
+    this.axiosInstance.interceptors.request.use(
       (config) => {
-        const token = this.getStoredToken();
-        if (token) {
+        // Add authentication token
+        const token = SecurityUtils.getSecureToken(process.env.REACT_APP_JWT_STORAGE_KEY!);
+        if (token && !SecurityUtils.isTokenExpired(token)) {
           config.headers.Authorization = `Bearer ${token}`;
         }
+
+        // Add CSRF token
+        if (this.csrfToken) {
+          config.headers['X-CSRF-Token'] = this.csrfToken;
+        }
+
+        // Sanitize request data
+        if (config.data && typeof config.data === 'object') {
+          config.data = this.sanitizeRequestData(config.data);
+        }
+
         return config;
       },
-      (error) => Promise.reject(error)
+      (error) => {
+        return Promise.reject(error);
+      }
     );
 
     // Response interceptor
-    this.api.interceptors.response.use(
-      (response) => response,
+    this.axiosInstance.interceptors.response.use(
+      (response: AxiosResponse) => {
+        return response;
+      },
       async (error) => {
         const originalRequest = error.config;
 
+        // Handle token refresh
         if (error.response?.status === 401 && !originalRequest._retry) {
           originalRequest._retry = true;
 
           try {
-            const refreshToken = this.getStoredRefreshToken();
-            if (refreshToken) {
-              const response = await this.refreshAccessToken(refreshToken);
-              const newToken = response.data.data.accessToken;
-              this.setStoredToken(newToken);
-              originalRequest.headers.Authorization = `Bearer ${newToken}`;
-              return this.api(originalRequest);
-            }
+            await this.refreshToken();
+            return this.axiosInstance(originalRequest);
           } catch (refreshError) {
-            this.clearStoredTokens();
+            // Redirect to login
+            SecurityUtils.removeSecureToken(process.env.REACT_APP_JWT_STORAGE_KEY!);
+            SecurityUtils.removeSecureToken(process.env.REACT_APP_REFRESH_TOKEN_KEY!);
             window.location.href = '/login';
             return Promise.reject(refreshError);
           }
@@ -59,62 +82,68 @@ class ApiService {
     );
   }
 
-  private getStoredToken(): string | null {
-    return sessionStorage.getItem('accessToken');
-  }
-
-  private getStoredRefreshToken(): string | null {
-    return sessionStorage.getItem('refreshToken');
-  }
-
-  private setStoredToken(token: string): void {
-    sessionStorage.setItem('accessToken', token);
-  }
-
-  private setStoredRefreshToken(token: string): void {
-    sessionStorage.setItem('refreshToken', token);
-  }
-
-  private clearStoredTokens(): void {
-    sessionStorage.removeItem('accessToken');
-    sessionStorage.removeItem('refreshToken');
-    sessionStorage.removeItem('user');
-  }
-
-  private async refreshAccessToken(refreshToken: string): Promise<AxiosResponse> {
-    return this.api.post('/auth/refresh', { refreshToken });
-  }
-
-  // Generic request method
-  public async request<T>(config: AxiosRequestConfig): Promise<AxiosResponse<BaseResponse<T>>> {
-    try {
-      const response = await this.api.request<BaseResponse<T>>(config);
-      return response;
-    } catch (error: any) {
-      // Handle network errors
-      if (!error.response) {
-        throw new Error('Network error or server unavailable');
-      }
-      throw error;
+  private sanitizeRequestData(data: any): any {
+    if (typeof data === 'string') {
+      return SecurityUtils.sanitizeInput(data);
     }
+
+    if (Array.isArray(data)) {
+      return data.map(item => this.sanitizeRequestData(item));
+    }
+
+    if (data && typeof data === 'object') {
+      const sanitized: any = {};
+      for (const [key, value] of Object.entries(data)) {
+        if (typeof value === 'string') {
+          sanitized[key] = SecurityUtils.sanitizeInput(value);
+        } else {
+          sanitized[key] = this.sanitizeRequestData(value);
+        }
+      }
+      return sanitized;
+    }
+
+    return data;
   }
 
-  // Convenience methods
-  public get<T>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<BaseResponse<T>>> {
-    return this.request<T>({ ...config, method: 'GET', url });
+  private async refreshToken(): Promise<void> {
+    const refreshToken = SecurityUtils.getSecureToken(process.env.REACT_APP_REFRESH_TOKEN_KEY!);
+    if (!refreshToken) {
+      throw new Error('No refresh token available');
+    }
+
+    const response = await this.axiosInstance.post('/auth/refresh', {
+      refreshToken
+    });
+
+    const { accessToken, refreshToken: newRefreshToken } = response.data.data;
+    SecurityUtils.setSecureToken(process.env.REACT_APP_JWT_STORAGE_KEY!, accessToken);
+    SecurityUtils.setSecureToken(process.env.REACT_APP_REFRESH_TOKEN_KEY!, newRefreshToken);
   }
 
-  public post<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<AxiosResponse<BaseResponse<T>>> {
-    return this.request<T>({ ...config, method: 'POST', url, data });
+  public async get<T>(url: string, config?: AxiosRequestConfig): Promise<BaseResponse<T>> {
+    const response = await this.axiosInstance.get<BaseResponse<T>>(url, config);
+    return response.data;
   }
 
-  public put<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<AxiosResponse<BaseResponse<T>>> {
-    return this.request<T>({ ...config, method: 'PUT', url, data });
+  public async post<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<BaseResponse<T>> {
+    const response = await this.axiosInstance.post<BaseResponse<T>>(url, data, config);
+    return response.data;
   }
 
-  public delete<T>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<BaseResponse<T>>> {
-    return this.request<T>({ ...config, method: 'DELETE', url });
+  public async put<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<BaseResponse<T>> {
+    const response = await this.axiosInstance.put<BaseResponse<T>>(url, data, config);
+    return response.data;
+  }
+
+  public async delete<T>(url: string, config?: AxiosRequestConfig): Promise<BaseResponse<T>> {
+    const response = await this.axiosInstance.delete<BaseResponse<T>>(url, config);
+    return response.data;
+  }
+
+  public setCSRFToken(token: string): void {
+    this.csrfToken = token;
   }
 }
 
-export const apiService = new ApiService();
+export const apiService = ApiService.getInstance();

@@ -1,39 +1,109 @@
-// src/store/authSlice.ts
-import { authService } from '../../services';
+// src/store/slices/authSlice.ts
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { AuthState, LoginRequest, LoginResponse, User } from '../../types/auth.types';
 
+// Mock auth service for now
+const mockAuthService = {
+  login: async (credentials: { email: string; password: string }) => {
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    if (credentials.email === 'admin@test.com' && credentials.password === 'password123') {
+      return {
+        accessToken: 'mock-jwt-token',
+        refreshToken: 'mock-refresh-token',
+        tokenType: 'Bearer',
+        expiresIn: 3600,
+        userId: '1',
+        email: credentials.email,
+        firstName: 'Admin',
+        lastName: 'User',
+        role: 'SUPER_ADMIN',
+        loginTime: new Date().toISOString(),
+      };
+    } else {
+      throw new Error('Invalid credentials');
+    }
+  },
+
+  getCurrentUser: async () => {
+    return {
+      userId: '1',
+      email: 'admin@test.com',
+      firstName: 'Admin',
+      lastName: 'User',
+      fullName: 'Admin User',
+      username: 'admin',
+      role: 'SUPER_ADMIN',
+      roleDisplayName: 'Super Admin',
+      isActive: true,
+      emailVerified: true,
+    };
+  },
+
+  validateToken: async () => {
+    return {
+      userId: '1',
+      email: 'admin@test.com',
+      firstName: 'Admin',
+      lastName: 'User',
+      fullName: 'Admin User',
+      username: 'admin',
+      role: 'SUPER_ADMIN',
+      roleDisplayName: 'Super Admin',
+      isActive: true,
+      emailVerified: true,
+    };
+  },
+
+  logout: async () => {
+    // Simulate logout
+  }
+};
+
+interface User {
+  userId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  username: string;
+  role: string;
+  roleDisplayName: string;
+  isActive: boolean;
+  emailVerified: boolean;
+  phoneNumber?: string;
+  territory?: string;
+  partnerCode?: string;
+  lastLogin?: string;
+  createdAt?: string;
+}
+
+interface AuthState {
+  user: User | null;
+  accessToken: string | null;
+  refreshToken: string | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  error: string | null;
+}
 
 const initialState: AuthState = {
-  user: authService.getStoredUser(),
-  token: authService.getStoredToken(),
-  refreshToken: sessionStorage.getItem('refreshToken'),
-  isAuthenticated: authService.isAuthenticated(),
+  user: null,
+  accessToken: null,
+  refreshToken: null,
+  isAuthenticated: false,
   isLoading: false,
   error: null,
-  sessionExpiry: null
 };
 
 // Async thunks
 export const loginAsync = createAsyncThunk(
   'auth/login',
-  async (credentials: LoginRequest, { rejectWithValue }) => {
+  async (credentials: { email: string; password: string }, { rejectWithValue }) => {
     try {
-      const response = await authService.login(credentials);
-      return response;
+      return await mockAuthService.login(credentials);
     } catch (error: any) {
-      return rejectWithValue(error.message);
-    }
-  }
-);
-
-export const logoutAsync = createAsyncThunk(
-  'auth/logout',
-  async (_, { rejectWithValue }) => {
-    try {
-      await authService.logout();
-    } catch (error: any) {
-      return rejectWithValue(error.message);
+      return rejectWithValue(error.message || 'Login failed');
     }
   }
 );
@@ -42,10 +112,31 @@ export const getCurrentUserAsync = createAsyncThunk(
   'auth/getCurrentUser',
   async (_, { rejectWithValue }) => {
     try {
-      const user = await authService.getCurrentUser();
-      return user;
+      return await mockAuthService.getCurrentUser();
     } catch (error: any) {
-      return rejectWithValue(error.message);
+      return rejectWithValue(error.message || 'Failed to get user data');
+    }
+  }
+);
+
+export const validateTokenAsync = createAsyncThunk(
+  'auth/validateToken',
+  async (_, { rejectWithValue }) => {
+    try {
+      return await mockAuthService.validateToken();
+    } catch (error: any) {
+      return rejectWithValue('Token validation failed');
+    }
+  }
+);
+
+export const logoutAsync = createAsyncThunk(
+  'auth/logout',
+  async (_, { rejectWithValue }) => {
+    try {
+      await mockAuthService.logout();
+    } catch (error: any) {
+      console.error('Logout error:', error);
     }
   }
 );
@@ -57,13 +148,12 @@ const authSlice = createSlice({
     clearError: (state) => {
       state.error = null;
     },
-    setUser: (state, action: PayloadAction<User>) => {
-      state.user = action.payload;
-      state.isAuthenticated = true;
+    setAuthenticated: (state, action: PayloadAction<boolean>) => {
+      state.isAuthenticated = action.payload;
     },
     clearAuth: (state) => {
       state.user = null;
-      state.token = null;
+      state.accessToken = null;
       state.refreshToken = null;
       state.isAuthenticated = false;
       state.error = null;
@@ -76,19 +166,23 @@ const authSlice = createSlice({
         state.isLoading = true;
         state.error = null;
       })
-      .addCase(loginAsync.fulfilled, (state, action: PayloadAction<LoginResponse>) => {
+      .addCase(loginAsync.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.token = action.payload.accessToken;
+        state.accessToken = action.payload.accessToken;
         state.refreshToken = action.payload.refreshToken;
+        state.isAuthenticated = true;
         state.user = {
           userId: action.payload.userId,
           email: action.payload.email,
           firstName: action.payload.firstName,
           lastName: action.payload.lastName,
-          role: action.payload.role,
           fullName: `${action.payload.firstName} ${action.payload.lastName}`,
-        } as User;
-        state.isAuthenticated = true;
+          username: action.payload.email,
+          role: action.payload.role,
+          roleDisplayName: action.payload.role,
+          isActive: true,
+          emailVerified: true,
+        };
         state.error = null;
       })
       .addCase(loginAsync.rejected, (state, action) => {
@@ -96,35 +190,27 @@ const authSlice = createSlice({
         state.error = action.payload as string;
         state.isAuthenticated = false;
       })
+      // Validate token
+      .addCase(validateTokenAsync.fulfilled, (state, action) => {
+        state.user = action.payload;
+        state.isAuthenticated = true;
+        state.isLoading = false;
+      })
+      .addCase(validateTokenAsync.rejected, (state) => {
+        state.user = null;
+        state.isAuthenticated = false;
+        state.isLoading = false;
+      })
       // Logout
       .addCase(logoutAsync.fulfilled, (state) => {
         state.user = null;
-        state.token = null;
+        state.accessToken = null;
         state.refreshToken = null;
         state.isAuthenticated = false;
         state.error = null;
-      })
-      // Get current user
-      .addCase(getCurrentUserAsync.pending, (state) => {
-        state.isLoading = true;
-      })
-      .addCase(getCurrentUserAsync.fulfilled, (state, action: PayloadAction<User>) => {
-        state.isLoading = false;
-        state.user = action.payload;
-        state.isAuthenticated = true;
-      })
-      .addCase(getCurrentUserAsync.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload as string;
-        state.user = null;
-        state.token = null;
-        state.refreshToken = null;
-        state.isAuthenticated = false;
-
-
       });
   },
 });
 
-export const { clearError, setUser, clearAuth } = authSlice.actions;
+export const { clearError, setAuthenticated, clearAuth } = authSlice.actions;
 export default authSlice.reducer;

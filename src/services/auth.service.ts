@@ -1,156 +1,111 @@
 // src/services/auth.service.ts
-import { LoginRequest, LoginResponse, UserProfile, RegistrationRequest } from '../types/auth.types';
-
-// Base API configuration
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
-
-// Security headers for all requests
-const getSecurityHeaders = (): HeadersInit => ({
-  'Content-Type': 'application/json',
-  'X-Requested-With': 'XMLHttpRequest', // CSRF protection
-  'Cache-Control': 'no-cache, no-store, must-revalidate',
-  'Pragma': 'no-cache',
-  'Expires': '0'
-});
-
-// Custom fetch wrapper with security measures
-const secureApiCall = async (
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<Response> => {
-  const url = `${API_BASE_URL}${endpoint}`;
-
-  const defaultOptions: RequestInit = {
-    credentials: 'include', // Include HttpOnly cookies
-    headers: {
-      ...getSecurityHeaders(),
-      ...options.headers,
-    },
-    ...options,
-  };
-
-  try {
-    const response = await fetch(url, defaultOptions);
-
-    // Check for security-related response headers
-    const contentType = response.headers.get('content-type');
-    if (contentType && !contentType.includes('application/json')) {
-      throw new Error('Invalid response type - potential security issue');
-    }
-
-    return response;
-  } catch (error) {
-    console.error('API call failed:', error);
-    throw error;
-  }
-};
-
-// API response wrapper with error handling
-const handleApiResponse = async <T>(response: Response): Promise<T> => {
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
-  }
-
-  return response.json();
-};
+import { apiService } from './api.service';
+import { SecurityUtils } from '../utils/security';
+import {
+  LoginRequest,
+  LoginResponse,
+  User,
+  RefreshTokenRequest,
+  ChangePasswordRequest
+} from '../types/auth.types';
+import { BaseResponse } from '../types/common.types';
 
 export class AuthService {
-  // Login with email and password
-  static async login(email: string, password: string): Promise<LoginResponse> {
-    const loginRequest: LoginRequest = { email, password };
+  private static instance: AuthService;
 
-    const response = await secureApiCall('/api/auth/login', {
-      method: 'POST',
-      body: JSON.stringify(loginRequest),
-    });
+  private constructor() {}
 
-    const result = await handleApiResponse<{data: LoginResponse}>(response);
+  public static getInstance(): AuthService {
+    if (!AuthService.instance) {
+      AuthService.instance = new AuthService();
+    }
+    return AuthService.instance;
+  }
 
-    // Validate response structure
-    if (!result.data || !result.data.accessToken) {
-      throw new Error('Invalid login response format');
+  async login(credentials: LoginRequest): Promise<LoginResponse> {
+    // Sanitize inputs
+    const sanitizedCredentials = {
+      email: SecurityUtils.sanitizeInput(credentials.email.toLowerCase().trim()),
+      password: credentials.password // Don't sanitize password as it might contain special chars
+    };
+
+    const response = await apiService.post<LoginResponse>('/auth/login', sanitizedCredentials);
+
+    if (response.success && response.data) {
+      // Store tokens securely
+      SecurityUtils.setSecureToken(
+        process.env.REACT_APP_JWT_STORAGE_KEY!,
+        response.data.accessToken
+      );
+      SecurityUtils.setSecureToken(
+        process.env.REACT_APP_REFRESH_TOKEN_KEY!,
+        response.data.refreshToken
+      );
     }
 
-    return result.data;
+    return response.data;
   }
 
-  // Register new user
-  static async register(registrationData: RegistrationRequest): Promise<UserProfile> {
-    const response = await secureApiCall('/api/auth/register', {
-      method: 'POST',
-      body: JSON.stringify(registrationData),
-    });
-
-    const result = await handleApiResponse<{data: UserProfile}>(response);
-    return result.data;
+  async getCurrentUser(): Promise<User> {
+    const response = await apiService.get<User>('/auth/me');
+    return response.data;
   }
 
-  // Get current user profile
-  static async getCurrentUser(): Promise<UserProfile> {
-    const response = await secureApiCall('/api/auth/me');
-    const result = await handleApiResponse<{data: UserProfile}>(response);
-    return result.data;
+  async refreshToken(refreshToken: string): Promise<LoginResponse> {
+    const request: RefreshTokenRequest = { refreshToken };
+    const response = await apiService.post<LoginResponse>('/auth/refresh', request);
+
+    if (response.success && response.data) {
+      SecurityUtils.setSecureToken(
+        process.env.REACT_APP_JWT_STORAGE_KEY!,
+        response.data.accessToken
+      );
+      SecurityUtils.setSecureToken(
+        process.env.REACT_APP_REFRESH_TOKEN_KEY!,
+        response.data.refreshToken
+      );
+    }
+
+    return response.data;
   }
 
-  // Refresh authentication token
-  static async refreshToken(): Promise<LoginResponse> {
-    const response = await secureApiCall('/api/auth/refresh', {
-      method: 'POST',
-    });
-
-    const result = await handleApiResponse<{data: LoginResponse}>(response);
-    return result.data;
+  async changePassword(request: ChangePasswordRequest): Promise<void> {
+    await apiService.post<string>('/auth/change-password', request);
   }
 
-  // Logout user
-  static async logout(): Promise<void> {
+  async logout(): Promise<void> {
     try {
-      await secureApiCall('/api/auth/logout', {
-        method: 'POST',
-      });
+      await apiService.post<string>('/auth/logout');
     } catch (error) {
-      console.error('Logout error:', error);
-      // Continue with logout even if API call fails
+      console.error('Logout request failed:', error);
+    } finally {
+      // Always clear tokens locally
+      this.clearTokens();
     }
   }
 
-  // Validate current session
-  static async validateSession(): Promise<boolean> {
+  async validateToken(): Promise<boolean> {
     try {
-      await this.getCurrentUser();
+      await apiService.get<boolean>('/auth/validate');
       return true;
     } catch {
       return false;
     }
   }
 
-  // Change password
-  static async changePassword(currentPassword: string, newPassword: string): Promise<void> {
-    const response = await secureApiCall('/api/auth/change-password', {
-      method: 'POST',
-      body: JSON.stringify({
-        currentPassword,
-        newPassword,
-      }),
-    });
-
-    await handleApiResponse(response);
+  clearTokens(): void {
+    SecurityUtils.removeSecureToken(process.env.REACT_APP_JWT_STORAGE_KEY!);
+    SecurityUtils.removeSecureToken(process.env.REACT_APP_REFRESH_TOKEN_KEY!);
   }
 
-  // Security utility: Clear any remaining client-side data
-  static clearClientData(): void {
-    // Clear any sessionStorage (if used for non-sensitive data)
-    sessionStorage.clear();
+  isAuthenticated(): boolean {
+    const token = SecurityUtils.getSecureToken(process.env.REACT_APP_JWT_STORAGE_KEY!);
+    return token !== null && !SecurityUtils.isTokenExpired(token);
+  }
 
-    // Clear any localStorage (should not contain sensitive data)
-    localStorage.clear();
-
-    // Clear any cached data
-    if ('caches' in window) {
-      caches.keys().then(names => {
-        names.forEach(name => caches.delete(name));
-      });
-    }
+  getStoredToken(): string | null {
+    return SecurityUtils.getSecureToken(process.env.REACT_APP_JWT_STORAGE_KEY!);
   }
 }
+
+export const authService = AuthService.getInstance();

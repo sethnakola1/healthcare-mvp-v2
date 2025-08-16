@@ -73,6 +73,15 @@ export interface AuthState {
   sessionExpiry: number | null;
 }
 
+// export interface AuthState {
+//   isAuthenticated: boolean;
+//   user: User | null;
+//   accessToken: string | null;
+//   refreshToken: string | null;
+//   isLoading: boolean;
+//   error: string | null;
+// }
+
 export interface AuthContextType {
   authState: AuthState;
   login: (email: string, password: string) => Promise<void>;
@@ -136,4 +145,53 @@ export interface User{
   partnerCode?: string;
   lastLogin?: string;
   createdAt: string;
+}
+
+
+// src/types/auth.types.ts
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface LoginResponse {
+  accessToken: string;
+  refreshToken: string;
+  tokenType: string;
+  expiresIn: number;
+  userId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  loginTime: string;
+}
+
+export interface User {
+  userId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  username: string;
+  role: string;
+  roleDisplayName: string;
+  isActive: boolean;
+  emailVerified: boolean;
+  phoneNumber?: string;
+  territory?: string;
+  partnerCode?: string;
+  lastLogin?: string;
+  createdAt?: string;
+}
+
+
+
+export interface RefreshTokenRequest {
+  refreshToken: string;
+}
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
 }

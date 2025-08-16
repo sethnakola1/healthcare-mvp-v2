@@ -1,8 +1,8 @@
 // src/pages/LoginPage.tsx
-import React, { useState, useEffect, useCallback } from 'react';
+// import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { BusinessRole } from '../../types/auth.types';
+import { useNavigate, useLocation, NavigateFunction } from 'react-router-dom';
+import { BusinessRole, UserProfile } from '../../types/auth.types';
 
 interface LoginFormData {
   email: string;
@@ -113,7 +113,7 @@ const LoginPage: React.FC = () => {
     // Security: Sanitize input
     const sanitizedValue = value.trim();
 
-    setFormData(prev => ({
+    setFormData((prev: any) => ({
       ...prev,
       [name]: sanitizedValue
     }));
@@ -359,3 +359,15 @@ const LoginPage: React.FC = () => {
 };
 
 export default LoginPage;
+
+function useState<T>(arg0: { email: string; password: string; }): [any, any] {
+  throw new Error('Function not implemented.');
+}
+function useCallback(arg0: (role: string) => string, arg1: any[]) {
+  throw new Error('Function not implemented.');
+}
+
+function useEffect(arg0: () => void, arg1: (boolean | void | NavigateFunction | UserProfile | null)[]) {
+  throw new Error('Function not implemented.');
+}
+
