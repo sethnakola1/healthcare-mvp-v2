@@ -6,7 +6,8 @@ import { ApiResponse, PaginatedResponse } from '../types/api.types';
 class PatientService {
   // Register new patient
   async registerPatient(request: CreatePatientRequest): Promise<ApiResponse<PatientDto>> {
-    return apiService.post<PatientDto>('/api/patients', request);
+    const response = await apiService.post<PatientDto>('/api/patients', request);
+    return response.data;
   }
 
   // Get hospital patients with pagination
@@ -25,25 +26,29 @@ class PatientService {
       params.append('search', search);
     }
 
-    return apiService.get<PaginatedResponse<PatientDto>>(
+    const response = await apiService.get<PaginatedResponse<PatientDto>>(
       `/api/patients/hospital/${hospitalId}?${params.toString()}`
     );
+    return response.data;
   }
 
   // Get patient by ID
   async getPatientById(patientId: string): Promise<ApiResponse<PatientDto>> {
-    return apiService.get<PatientDto>(`/api/patients/${patientId}`);
+    const response = await apiService.get<PatientDto>(`/api/patients/${patientId}`);
+    return response.data;
   }
 
   // Search patients globally
   async searchPatientsGlobally(searchTerm: string): Promise<ApiResponse<PatientDto[]>> {
     const params = new URLSearchParams({ searchTerm });
-    return apiService.get<PatientDto[]>(`/api/patients/search?${params.toString()}`);
+    const response = await apiService.get<PatientDto[]>(`/api/patients/search?${params.toString()}`);
+    return response.data;
   }
 
   // Update patient
   async updatePatient(patientId: string, request: CreatePatientRequest): Promise<ApiResponse<PatientDto>> {
-    return apiService.put<PatientDto>(`/api/patients/${patientId}`, request);
+    const response = await apiService.put<PatientDto>(`/api/patients/${patientId}`, request);
+    return response.data;
   }
 }
 

@@ -1,86 +1,91 @@
+// src/App.tsx
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { store } from './store/store';
 import { useAppDispatch, useAppSelector } from './hooks/redux';
-import { getCurrentUser } from './store/slices/authSlice';
+// import { getCurrentUserAsync } from './store/authSlice';
+
+// Components
+// import LandingPage from './components/LandingPage';
 // import LoginPage from './components/LoginPage';
 // import Dashboard from './components/Dashboard';
-// import LoadingSpinner from './components/LoadingSpinner';
+// import ProtectedRoute from './components/ProtectedRoute';
+
+// Styles
 import './App.css';
-import { LoadingSpinner } from './components/common';
+import { getCurrentUserAsync } from './store/slices/authSlice';
+import LandingPage from './components/common/LandingPage';
 import LoginPage from './components/auth/LoginPage';
-import Dashboard from './components/dashboard/Dashboard';
+import { JSX } from 'react/jsx-runtime';
 
-// Protected Route Component
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAppSelector((state) => state.auth);
-
-  if (isLoading) {
-    return <LoadingSpinner />;
-  }
-
-  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
-};
-
-// Public Route Component (redirect to dashboard if already authenticated)
-const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAppSelector((state) => state.auth);
-
-  if (isLoading) {
-    return <LoadingSpinner />;
-  }
-
-  return !isAuthenticated ? <>{children}</> : <Navigate to="/dashboard" replace />;
-};
-
-function AppContent() {
+const AppContent = (): JSX.Element => {
   const dispatch = useAppDispatch();
-  const { isLoading } = useAppSelector((state) => state.auth);
+  const { isAuthenticated, token } = useAppSelector((state: any) => state.auth);
 
   useEffect(() => {
-    // Check authentication status on app start
-    dispatch(getCurrentUser());
-  }, [dispatch]);
-
-  if (isLoading) {
-    return <LoadingSpinner message="Checking authentication..." />;
-  }
+    // Check if user is logged in on app load
+    if (token && !isAuthenticated) {
+      dispatch(getCurrentUserAsync());
+    }
+  }, [dispatch, token, isAuthenticated]);
 
   return (
-    <div className="App">
-      <Routes>
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route 
-          path="/login" 
-          element={
-            <PublicRoute>
-              <LoginPage />
-            </PublicRoute>
-          } 
-        />
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
-    </div>
-  );
-}
+    <Router>
+      <div className="App">
+        <Routes>
+          {/* Public routes */}
+          <Route path="/" element={<LandingPage />} />
+          <Route
+            path="/login"
+            element={
+              isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginPage />
+            }
+          />
 
-function App() {
+          {/* Protected routes */}
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Unauthorized page */}
+          <Route
+            path="/unauthorized"
+            element={
+              <div className="error-page">
+                <h1>Unauthorized</h1>
+                <p>You don't have permission to access this page.</p>
+              </div>
+            }
+          />
+
+          {/* 404 page */}
+          <Route
+            path="*"
+            element={
+              <div className="error-page">
+                <h1>Page Not Found</h1>
+                <p>The page you're looking for doesn't exist.</p>
+              </div>
+            }
+          />
+        </Routes>
+      </div>
+    </Router>
+  );
+};
+
+const App: React.FC = () => {
   return (
     <Provider store={store}>
-      <Router>
-        <AppContent />
-      </Router>
+      <AppContent />
     </Provider>
   );
-}
+};
 
 export default App;

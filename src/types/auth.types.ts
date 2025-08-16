@@ -1,10 +1,21 @@
+// export interface AuthState {
+//   user: User | null;
+//   token: string | null;
+//   refreshToken: string | null;
+//   isAuthenticated: boolean;
+//   isLoading: boolean;
+//   error: string | null;
+// }
+
 export interface AuthState {
+  user: User | null;
+  token: string | null;
+  refreshToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  user: UserProfile | null;
   error: string | null;
-  lastActivity: number;
 }
+
 
 export interface UserProfile {
   userId: string;
@@ -43,17 +54,46 @@ export interface LoginCredentials {
 }
 
 
+// export interface User {
+//   userId: string;
+//   email: string;
+//   firstName: string;
+//   lastName: string;
+//   fullName: string;
+//   username: string;
+//   role: string;
+//   roleDisplayName: string;
+//   isActive: boolean;
+//   emailVerified: boolean;
+//   phoneNumber?: string;
+//   territory?: string;
+//   partnerCode?: string;
+//   lastLogin?: string;
+//   createdAt: string;
+// }
 
-// src/types/auth.types.ts
 export interface User {
-  id: string;
+  userId: string;
   email: string;
   firstName: string;
   lastName: string;
-  role: UserRole;
+  fullName: string;
+  username: string;
+  role: string;
+  roleDisplayName: string;
+  isActive: boolean;
+  emailVerified: boolean;
+  phoneNumber?: string;
+  territory?: string;
+  partnerCode?: string;
+  lastLogin?: string;
   createdAt: string;
-  updatedAt: string;
 }
+
+
+
+
+
 
 export enum UserRole {
   ADMIN = 'admin',
@@ -63,16 +103,47 @@ export enum UserRole {
   STAFF = 'staff'
 }
 
+// src/types/auth.types.ts
+// export interface LoginRequest {
+//   email: string;
+//   password: string;
+// }
+
+// src/types/auth.types.ts
 export interface LoginRequest {
   email: string;
   password: string;
 }
 
+
+
+// export interface LoginResponse {
+//   accessToken: string;
+//   refreshToken: string;
+//   tokenType: string;
+//   expiresIn: number;
+//   userId: string;
+//   email: string;
+//   firstName: string;
+//   lastName: string;
+//   role: string;
+//   loginTime: string;
+// }
+
 export interface LoginResponse {
-  success: boolean;
-  user?: User;
-  error?: string;
-  message?: string;
+  error: string;
+  user: any;
+  success: any;
+  accessToken: string;
+  refreshToken: string;
+  tokenType: string;
+  expiresIn: number;
+  userId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  loginTime: string;
 }
 
 export interface AuthResponse {
@@ -101,3 +172,16 @@ export interface ApiError {
   status: number;
   code?: string;
 }
+
+
+export interface BaseResponse<T> {
+  success: boolean;
+  message: string;
+  data: T;
+  error?: string;
+  errorCode?: string;
+}
+
+
+
+

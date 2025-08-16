@@ -1,262 +1,279 @@
-/* src/components/Dashboard.css */
-.dashboard {
+// src/styles/Dashboard.css
+.dashboard-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   min-height: 100vh;
-  background-color: #f8fafc;
+  background: #f7fafc;
+  color: #4a5568;
+  gap: 16px;
+}
+
+.spinner.large {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e2e8f0;
+  border-top: 3px solid #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.dashboard-container {
+  min-height: 100vh;
+  background: #f7fafc;
 }
 
 .dashboard-header {
   background: white;
   border-bottom: 1px solid #e2e8f0;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .header-content {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 1rem 2rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: 16px 32px;
+  max-width: 1400px;
+  margin: 0 auto;
 }
 
-.logo-section {
+.header-left .logo {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 12px;
 }
 
-.logo-icon {
-  width: 32px;
-  height: 32px;
-  color: #667eea;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.header-left .logo-icon {
+  font-size: 28px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
-.logo-icon svg {
-  width: 100%;
-  height: 100%;
-}
-
-.logo-section h1 {
-  font-size: 1.5rem;
+.header-left .brand-name {
+  font-size: 24px;
   font-weight: 700;
-  color: #1f2937;
-  margin: 0;
-  letter-spacing: -0.025em;
+  color: #2d3748;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
-.user-section {
+.user-menu {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 16px;
 }
 
 .user-info {
   display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.user-details {
+  display: flex;
   flex-direction: column;
-  align-items: flex-end;
-  text-align: right;
 }
 
 .user-name {
   font-weight: 600;
-  color: #374151;
-  font-size: 0.875rem;
+  color: #2d3748;
+  font-size: 14px;
 }
 
 .user-role {
-  font-size: 0.75rem;
-  color: #6b7280;
+  font-size: 12px;
+  color: #718096;
   text-transform: capitalize;
 }
 
 .logout-button {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #e53e3e;
   color: white;
   border: none;
-  border-radius: 8px;
-  font-size: 0.875rem;
+  padding: 8px 16px;
+  border-radius: 6px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease-in-out;
+  transition: all 0.2s ease;
+  font-size: 14px;
 }
 
 .logout-button:hover {
+  background: #c53030;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-}
-
-.logout-button svg {
-  width: 16px;
-  height: 16px;
-  stroke-width: 2;
 }
 
 .dashboard-main {
-  max-width: 1200px;
+  padding: 32px;
+  max-width: 1400px;
   margin: 0 auto;
-  padding: 2rem;
+}
+
+.dashboard-content {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
 }
 
 .welcome-section {
-  margin-bottom: 2rem;
+  text-align: center;
+  margin-bottom: 16px;
 }
 
-.welcome-section h2 {
-  font-size: 2rem;
+.welcome-section h1 {
+  font-size: 32px;
   font-weight: 700;
-  color: #1f2937;
-  margin: 0 0 0.5rem 0;
+  color: #2d3748;
+  margin-bottom: 8px;
 }
 
 .welcome-section p {
-  color: #6b7280;
-  font-size: 1.125rem;
-  margin: 0;
+  color: #718096;
+  font-size: 16px;
 }
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 3rem;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 24px;
+  margin-bottom: 16px;
 }
 
 .dashboard-card {
   background: white;
   border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   border: 1px solid #e2e8f0;
-  transition: all 0.2s ease-in-out;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
+  transition: all 0.2s ease;
 }
 
 .dashboard-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
 .card-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
+  font-size: 24px;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #667eea20, #764ba220);
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
 }
 
-.card-icon svg {
-  width: 24px;
-  height: 24px;
-  stroke-width: 2;
-}
-
-.card-icon.patients {
-  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-  color: white;
-}
-
-.card-icon.appointments {
-  background: linear-gradient(135deg, #10b981, #047857);
-  color: white;
-}
-
-.card-icon.doctors {
-  background: linear-gradient(135deg, #f59e0b, #d97706);
-  color: white;
-}
-
-.card-icon.revenue {
-  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
-  color: white;
-}
-
-.card-content {
-  flex: 1;
-}
-
-.card-content h3 {
-  font-size: 0.875rem;
+.card-header h3 {
+  font-size: 16px;
   font-weight: 600;
-  color: #6b7280;
-  margin: 0 0 0.25rem 0;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.card-number {
-  font-size: 2rem;
-  font-weight: 700;
-  color: #1f2937;
-  margin: 0 0 0.25rem 0;
-  line-height: 1;
-}
-
-.card-description {
-  font-size: 0.875rem;
-  color: #6b7280;
+  color: #2d3748;
   margin: 0;
 }
 
-.recent-activities {
+.card-content {
+  text-align: center;
+}
+
+.stat-number {
+  font-size: 32px;
+  font-weight: 700;
+  color: #2d3748;
+  margin-bottom: 4px;
+}
+
+.stat-label {
+  color: #718096;
+  font-size: 14px;
+}
+
+.status-indicator {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  display: inline-block;
+}
+
+.status-indicator.active {
+  background: #c6f6d5;
+  color: #276749;
+}
+
+.dashboard-sections {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+}
+
+.section {
   background: white;
   border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   border: 1px solid #e2e8f0;
 }
 
-.recent-activities h3 {
-  font-size: 1.25rem;
+.section h2 {
+  font-size: 20px;
   font-weight: 600;
-  color: #1f2937;
-  margin: 0 0 1rem 0;
+  color: #2d3748;
+  margin-bottom: 20px;
 }
 
-.activities-list {
+.activity-list {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 16px;
 }
 
 .activity-item {
   display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 0.75rem 0;
-  border-bottom: 1px solid #f3f4f6;
-}
-
-.activity-item:last-child {
-  border-bottom: none;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  background: #f7fafc;
+  border-radius: 8px;
 }
 
 .activity-icon {
-  width: 40px;
-  height: 40px;
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  border-radius: 8px;
+  font-size: 20px;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #667eea20, #764ba220);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
   flex-shrink: 0;
-}
-
-.activity-icon svg {
-  width: 20px;
-  height: 20px;
-  stroke-width: 2;
 }
 
 .activity-content {
@@ -265,72 +282,105 @@
 
 .activity-title {
   font-weight: 500;
-  color: #374151;
-  margin: 0 0 0.25rem 0;
+  color: #2d3748;
+  font-size: 14px;
+  margin-bottom: 2px;
 }
 
 .activity-time {
-  font-size: 0.875rem;
-  color: #6b7280;
-  margin: 0;
+  color: #718096;
+  font-size: 12px;
+}
+
+.quick-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+}
+
+.action-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 12px;
+  background: #f7fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.action-button:hover {
+  background: #edf2f7;
+  transform: translateY(-1px);
+  border-color: #667eea;
+}
+
+.action-icon {
+  font-size: 24px;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-button span {
+  font-size: 12px;
+  font-weight: 500;
+  color: #4a5568;
 }
 
 /* Responsive design */
+@media (max-width: 1024px) {
+  .dashboard-sections {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 768px) {
-  .header-content {
-    padding: 1rem;
-    flex-direction: column;
-    gap: 1rem;
-    align-items: stretch;
-  }
-
-  .user-section {
-    justify-content: space-between;
-  }
-
-  .user-info {
-    align-items: flex-start;
-    text-align: left;
-  }
-
   .dashboard-main {
-    padding: 1rem;
+    padding: 16px;
   }
 
-  .welcome-section h2 {
-    font-size: 1.5rem;
-  }
-
-  .welcome-section p {
-    font-size: 1rem;
+  .header-content {
+    padding: 16px 20px;
   }
 
   .dashboard-grid {
     grid-template-columns: 1fr;
-    gap: 1rem;
   }
 
-  .dashboard-card {
-    padding: 1rem;
+  .welcome-section h1 {
+    font-size: 24px;
   }
 
-  .card-number {
-    font-size: 1.5rem;
+  .user-info {
+    display: none;
+  }
+
+  .quick-actions {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
 @media (max-width: 480px) {
-  .logo-section h1 {
-    font-size: 1.25rem;
-  }
-
-  .activity-item {
+  .header-content {
     flex-direction: column;
-    align-items: flex-start;
-    gap: 0.5rem;
+    gap: 16px;
+    align-items: stretch;
   }
 
-  .activity-icon {
-    align-self: flex-start;
+  .user-menu {
+    justify-content: space-between;
+  }
+
+  .user-info {
+    display: flex;
   }
 }

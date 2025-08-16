@@ -1,84 +1,26 @@
-import React, { useEffect } from 'react';
+// src/components/ProtectedRoute.tsx
+import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAppDispatch, useAppSelector } from '../../store/hooks';
-
-import { BusinessRole } from '../../types/auth.types';
-import { getCurrentUser } from '../../store/slices/authSlice';
-import { LoadingSpinner } from '../common';
-// import { LoadingSpinner } from '../common/LoadingSpinner';
-// import { getCurrentUser, validateSession, updateActivity } from '../store/slices/authSlice';
+import { useAppSelector } from '../hooks/redux';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRoles?: BusinessRole[];
-  redirectTo?: string;
+  roles?: string[];
 }
 
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
-  children,
-  requiredRoles,
-  redirectTo = '/login',
-}) => {
-  const dispatch = useAppDispatch();
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, roles }) => {
+  const { isAuthenticated, user } = useAppSelector((state) => state.auth);
   const location = useLocation();
-  const { isAuthenticated, isLoading, user } = useAppSelector((state) => state.auth);
 
-  useEffect(() => {
-    // Update user activity
-    dispatch(updateActivity());
-
-    // Validate session on route change
-    if (isAuthenticated) {
-      dispatch(validateSession());
-    } else {
-      // Try to get current user if not authenticated (in case of page refresh)
-      dispatch(getCurrentUser());
-    }
-
-    // Set up activity tracking
-    const handleActivity = () => {
-      dispatch(updateActivity());
-    };
-
-    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
-    events.forEach(event => {
-      document.addEventListener(event, handleActivity, true);
-    });
-
-    return () => {
-      events.forEach(event => {
-        document.removeEventListener(event, handleActivity, true);
-      });
-    };
-  }, [dispatch, isAuthenticated, location.pathname]);
-
-  // Show loading while checking authentication
-  if (isLoading) {
-    return <LoadingSpinner />;
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Redirect to login if not authenticated
-  if (!isAuthenticated || !user) {
-    return <Navigate to={redirectTo} state={{ from: location }} replace />;
-  }
-
-  // Check role-based access
-  if (requiredRoles && requiredRoles.length > 0) {
-    const hasRequiredRole = requiredRoles.includes(user.role as unknown as BusinessRole);
-    if (!hasRequiredRole) {
-      return <Navigate to="/unauthorized" replace />;
-    }
+  if (roles && user && !roles.includes(user.role)) {
+    return <Navigate to="/unauthorized" replace />;
   }
 
   return <>{children}</>;
 };
 
 export default ProtectedRoute;
-
-function updateActivity(): any {
-  throw new Error('Function not implemented.');
-}
-function validateSession(): any {
-  throw new Error('Function not implemented.');
-}
-
