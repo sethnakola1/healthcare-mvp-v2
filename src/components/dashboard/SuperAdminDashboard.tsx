@@ -1,7 +1,6 @@
-// import React, { useEffect } from 'react';
 import React from 'react';
-import { useAppSelector } from '../../store/hooks';
 import { Users, Building2, Activity, TrendingUp } from 'lucide-react';
+import { useAppSelector } from '../../hooks/redux';
 
 export const SuperAdminDashboard: React.FC = () => {
   const { user } = useAppSelector((state) => state.auth);

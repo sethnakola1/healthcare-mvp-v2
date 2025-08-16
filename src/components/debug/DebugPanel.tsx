@@ -1,7 +1,7 @@
 // src/components/debug/DebugPanel.tsx (FIX MISSING EXPORT)
 import React, { useState } from 'react';
-import { useAppSelector } from '../../store/hooks';
 import { DebugUtils } from '../../utils/debug';
+import { useAppSelector } from '../../hooks/redux';
 
 export const DebugPanel: React.FC = () => {
   const authState = useAppSelector((state) => state.auth);

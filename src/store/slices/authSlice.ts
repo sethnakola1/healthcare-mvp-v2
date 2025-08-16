@@ -1,9 +1,8 @@
 // src/store/authSlice.ts
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { AuthState, LoginRequest, LoginResponse, User } from '../../types';
 import { authService } from '../../services';
-// import { authService } from '../services/auth.service';
-// import { AuthState, LoginRequest, LoginResponse, User } from '../types/auth.types';
+import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { AuthState, LoginRequest, LoginResponse, User } from '../../types/auth.types';
+
 
 const initialState: AuthState = {
   user: authService.getStoredUser(),
@@ -12,6 +11,7 @@ const initialState: AuthState = {
   isAuthenticated: authService.isAuthenticated(),
   isLoading: false,
   error: null,
+  sessionExpiry: null
 };
 
 // Async thunks
@@ -120,6 +120,8 @@ const authSlice = createSlice({
         state.token = null;
         state.refreshToken = null;
         state.isAuthenticated = false;
+
+
       });
   },
 });

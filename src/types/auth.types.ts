@@ -1,139 +1,11 @@
-// export interface AuthState {
-//   user: User | null;
-//   token: string | null;
-//   refreshToken: string | null;
-//   isAuthenticated: boolean;
-//   isLoading: boolean;
-//   error: string | null;
-// }
-
-export interface AuthState {
-  user: User | null;
-  token: string | null;
-  refreshToken: string | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  error: string | null;
-}
-
-
-export interface UserProfile {
-  userId: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  fullName: string;
-  username: string;
-  role: BusinessRole; // Fixed: Use BusinessRole enum instead of string
-  roleDisplayName: string;
-  isActive: boolean;
-  emailVerified: boolean;
-  phoneNumber?: string;
-  territory?: string;
-  partnerCode?: string;
-  lastLogin?: string;
-  createdAt: string;
-}
-
-export enum BusinessRole {
-  SUPER_ADMIN = 'SUPER_ADMIN',
-  TECH_ADVISOR = 'TECH_ADVISOR',
-  HOSPITAL_ADMIN = 'HOSPITAL_ADMIN',
-  DOCTOR = 'DOCTOR',
-  NURSE = 'NURSE',
-  RECEPTIONIST = 'RECEPTIONIST',
-  LAB_STAFF = 'LAB_STAFF',
-  PHARMACY_STAFF = 'PHARMACY_STAFF',
-  BILLING_STAFF = 'BILLING_STAFF',
-  PATIENT = 'PATIENT'
-}
-
-export interface LoginCredentials {
-  email: string;
-  password: string;
-}
-
-
-// export interface User {
-//   userId: string;
-//   email: string;
-//   firstName: string;
-//   lastName: string;
-//   fullName: string;
-//   username: string;
-//   role: string;
-//   roleDisplayName: string;
-//   isActive: boolean;
-//   emailVerified: boolean;
-//   phoneNumber?: string;
-//   territory?: string;
-//   partnerCode?: string;
-//   lastLogin?: string;
-//   createdAt: string;
-// }
-
-export interface User {
-  userId: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  fullName: string;
-  username: string;
-  role: string;
-  roleDisplayName: string;
-  isActive: boolean;
-  emailVerified: boolean;
-  phoneNumber?: string;
-  territory?: string;
-  partnerCode?: string;
-  lastLogin?: string;
-  createdAt: string;
-}
-
-
-
-
-
-
-export enum UserRole {
-  ADMIN = 'admin',
-  DOCTOR = 'doctor',
-  NURSE = 'nurse',
-  PATIENT = 'patient',
-  STAFF = 'staff'
-}
-
 // src/types/auth.types.ts
-// export interface LoginRequest {
-//   email: string;
-//   password: string;
-// }
 
-// src/types/auth.types.ts
 export interface LoginRequest {
   email: string;
   password: string;
 }
 
-
-
-// export interface LoginResponse {
-//   accessToken: string;
-//   refreshToken: string;
-//   tokenType: string;
-//   expiresIn: number;
-//   userId: string;
-//   email: string;
-//   firstName: string;
-//   lastName: string;
-//   role: string;
-//   loginTime: string;
-// }
-
 export interface LoginResponse {
-  error: string;
-  user: any;
-  success: any;
   accessToken: string;
   refreshToken: string;
   tokenType: string;
@@ -146,42 +18,122 @@ export interface LoginResponse {
   loginTime: string;
 }
 
-export interface AuthResponse {
-  success: boolean;
-  user?: User;
-  error?: string;
-}
-
-export interface PasswordResetRequest {
+export interface UserProfile {
+  userId: string;
   email: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  username: string;
+  role: string;
+  roleDisplayName: string;
+  isActive: boolean;
+  emailVerified: boolean;
+  phoneNumber?: string;
+  territory?: string;
+  partnerCode?: string;
+  lastLogin?: string;
+  createdAt: string;
+  // Business-specific fields for TECH_ADVISOR role
+  commissionPercentage?: number;
+  targetHospitalsMonthly?: number;
+  totalHospitalsBrought?: number;
+  totalCommissionEarned?: number;
 }
 
-export interface PasswordResetResponse {
-  success: boolean;
-  message: string;
-  error?: string;
+export interface RegistrationRequest {
+  firstName: string;
+  lastName: string;
+  email: string;
+  username: string;
+  password: string;
+  confirmPassword: string;
+  phoneNumber?: string;
+  territory: string;
+  role: BusinessRole;
 }
 
-export interface ChangePasswordRequest {
-  currentPassword: string;
-  newPassword: string;
+export enum BusinessRole {
+  SUPER_ADMIN = 'SUPER_ADMIN',
+  TECH_ADVISOR = 'TECH_ADVISOR',
+  HOSPITAL_ADMIN = 'HOSPITAL_ADMIN',
+  DOCTOR = 'DOCTOR',
+  NURSE = 'NURSE',
+  RECEPTIONIST = 'RECEPTIONIST',
+  PATIENT = 'PATIENT'
 }
 
-export interface ApiError {
-  message: string;
-  status: number;
-  code?: string;
+export interface AuthState {
+  isAuthenticated: boolean;
+  user: UserProfile | null;
+  token: string | null;
+  refreshToken: string | null;
+  isLoading: boolean;
+  error: string | null;
+  sessionExpiry: number | null;
 }
 
+export interface AuthContextType {
+  authState: AuthState;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
+  register: (data: RegistrationRequest) => Promise<void>;
+  refreshAuth: () => Promise<void>;
+  clearError: () => void;
+  hasRole: (role: BusinessRole) => boolean;
+  hasAnyRole: (roles: BusinessRole[]) => boolean;
+}
 
-export interface BaseResponse<T> {
+// API Response wrapper type
+export interface ApiResponse<T> {
   success: boolean;
   message: string;
   data: T;
-  error?: string;
-  errorCode?: string;
+  timestamp?: string;
 }
 
+// Error response type
+export interface ApiError {
+  success: false;
+  message: string;
+  code?: string;
+  details?: any;
+  timestamp: string;
+}
 
+// Security-related types
+export interface SecurityConfig {
+  csrfToken?: string;
+  sessionTimeout: number;
+  maxLoginAttempts: number;
+  lockoutDuration: number;
+}
 
+// Dashboard data type
+export interface DashboardData {
+  appointments?: any[];
+  bills?: any[];
+  prescriptions?: any[];
+  users?: any[];
+  systemMetrics?: Record<string, any>;
+  feedback?: any[];
+  notifications?: any[];
+}
 
+export interface User{
+  userId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  username: string;
+  role: BusinessRole;
+  roleDisplayName: string;
+  isActive: boolean;
+  emailVerified: boolean;
+  phoneNumber?: string;
+  territory?: string;
+  partnerCode?: string;
+  lastLogin?: string;
+  createdAt: string;
+}
