@@ -150,46 +150,46 @@ const LoginForm: React.FC = () => {
     }));
 
     // Clear field-specific errors
-    if (formErrors[field]) {
-      setFormErrors(prev => ({
-        ...prev,
-        [field]: undefined
-      }));
-    }
+    // if (formErrors[field]) {
+    //   setFormErrors(prev => ({
+    //     ...prev,
+    //     [field]: undefined
+    //   }));
+    // }
   };
 
   // Form validation
   const validateForm = (): boolean => {
-    const errors: FormErrors = {};
+    const newErrors: FormErrors = {};
 
     // Email validation
     if (!formData.email) {
-      errors.email = 'Email is required';
+      newErrors.email = 'Email is required';
     } else if (!EMAIL_REGEX.test(formData.email)) {
-      errors.email = 'Please enter a valid email address';
+      newErrors.email = 'Please enter a valid email address';
     }
 
     // Password validation
     if (!formData.password) {
-      errors.password = 'Password is required';
+      newErrors.password = 'Password is required';
     } else {
       const passwordValidation = validatePassword(formData.password);
       if (!passwordValidation.isValid) {
-        errors.password = passwordValidation.errors[0];
+        newErrors.password = passwordValidation.errors[0];
       }
     }
 
     // Captcha validation
     if (captchaRequired) {
       if (!captchaValue) {
-        errors.general = 'Please complete the captcha';
+        newErrors.general = 'Please complete the captcha';
       } else if (parseInt(captchaValue) !== captchaAnswer) {
-        errors.general = 'Incorrect captcha answer';
+        newErrors.general = 'Incorrect captcha answer';
       }
     }
 
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
+    setFormErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   // Form submission

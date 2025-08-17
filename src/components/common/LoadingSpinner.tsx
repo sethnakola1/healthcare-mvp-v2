@@ -18,9 +18,7 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
 
   return (
     <div className={`flex items-center justify-center min-h-screen ${className}`}>
-      <div className={`animate-spin rounded-full border-b-2 border-indigo-600 ${sizeClasses[size]}`}>
-      </div>
-      {message && <p className="loading-message">{message}</p>}
+      <div className={`animate-spin rounded-full border-b-2 border-indigo-600 ${sizeClasses[size as keyof typeof sizeClasses]}`}></div>
     </div>
   );
 };

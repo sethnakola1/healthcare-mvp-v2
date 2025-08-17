@@ -7,13 +7,9 @@ import {
   Building2,
   UserPlus,
   Calendar,
-  FileText,
-  BarChart3,
-  Settings,
   LogOut,
   Bell,
   Search,
-  Plus,
   TrendingUp,
   Activity,
   DollarSign
@@ -200,7 +196,7 @@ const Dashboard: React.FC = () => {
       });
     }
 
-    if (permissions.canManageAppointments) {
+    if (permissions.canManageAppointments()) {
       actions.push({
         title: 'Schedule Appointment',
         description: 'Book new patient appointment',
@@ -307,9 +303,13 @@ const Dashboard: React.FC = () => {
                 <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
               </div>
 
-              <button className="p-2 text-gray-600 hover:text-gray-900 relative">
+              <button
+                className="p-2 text-gray-600 hover:text-gray-900 relative"
+                aria-label="View notifications"
+                title="View notifications"
+              >
                 <Bell className="h-6 w-6" />
-                <span className="absolute top-0 right-0 h-2 w-2 bg-red-500 rounded-full"></span>
+                <span className="absolute top-0 right-0 h-2 w-2 bg-red-500 rounded-full" aria-hidden="true" />
               </button>
 
               <div className="flex items-center space-x-3">
@@ -320,6 +320,8 @@ const Dashboard: React.FC = () => {
                 <button
                   onClick={() => navigate('/profile')}
                   className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 hover:bg-indigo-200"
+                  aria-label="View user profile"
+                  title="View user profile"
                 >
                   {user?.firstName?.charAt(0)}
                 </button>

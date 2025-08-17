@@ -1,7 +1,7 @@
 // src/store/slices/authSlice.ts
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { apiService } from '../../services/api.service';
-import type { LoginRequest, LoginResponse } from '../../services/api.service';
+import type { LoginRequest } from '../../services/api.service';
 
 // Types
 export interface User {

@@ -1,13 +1,13 @@
 // src/hooks/usePermissions.ts
-import { useAppSelector } from './redux';
+// import { useAppSelector } from '../store/hooks';
+import { useAppSelector } from '../../store/hooks';
 import {
   selectCanCreateBusinessUser,
   selectCanCreateHospital,
   selectCanCreateHospitalUser,
   selectCanManagePatients,
   selectUserRole
-} from '../store/slices/authSlice';
-
+} from '../../store/slices/authSlice';
 
 export const usePermissions = () => {
   const userRole = useAppSelector(selectUserRole);

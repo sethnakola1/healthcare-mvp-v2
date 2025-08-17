@@ -58,9 +58,10 @@ export const businessUserRegistrationSchema = z.object({
     .string()
     .min(1, 'Territory is required')
     .max(100, 'Territory must not exceed 100 characters'),
-  role: z.enum(['SUPER_ADMIN', 'TECH_ADVISOR'], {
-    required_error: 'Role is required'
-  })
+  role: z.enum(['SUPER_ADMIN', 'TECH_ADVISOR'], 'Role is required')
+  // role: z.enum(['SUPER_ADMIN', 'TECH_ADVISOR'], {
+  //   required_error: 'Role is required'
+  // })
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
@@ -89,9 +90,12 @@ export const patientRegistrationSchema = z.object({
       const today = new Date();
       return birthDate < today;
     }, 'Date of birth must be in the past'),
-  gender: z.enum(['MALE', 'FEMALE', 'OTHER'], {
-    required_error: 'Gender is required'
-  }),
+
+
+  gender: z.enum(['MALE', 'FEMALE', 'OTHER'], 'Gender is required'),
+  // gender: z.enum(['MALE', 'FEMALE', 'OTHER'], {
+  //   required_error: 'Gender is required'
+  // }),
   email: z
     .string()
     .email('Please enter a valid email address')

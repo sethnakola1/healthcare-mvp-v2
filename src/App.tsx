@@ -8,9 +8,9 @@ import { useAuth } from './hooks/useAuth';
 // Components
 import LoginForm from './components/auth/LoginForm';
 import Dashboard from './components/dashboard/Dashboard';
-import ProtectedRoute from './components/common/ProtectedRoute';
 import Unauthorized from './components/common/Unauthorized';
 import LoadingSpinner from './components/common/LoadingSpinner';
+import ProtectedRoute from './components/auth/ProtectedRoute';
 
 // Security: Add CSP meta tag
 const addCSPMeta = () => {

@@ -1,10 +1,11 @@
 import React from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
+
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { createBusinessUserAsync } from '../../../store/slices/businessSlice';
 import { z } from 'zod';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 
 const businessUserSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
@@ -16,17 +17,23 @@ const businessUserSchema = z.object({
   phoneNumber: z.string().optional(),
   territory: z.string().min(1, 'Territory is required'),
   role: z.enum(['SUPER_ADMIN', 'TECH_ADVISOR']),
-}).refine((data) => data.password === data.confirmPassword, {
+}).refine((data: BusinessUserFormData) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
 });
+
+
+// .refine((data) => data.password === data.confirmPassword, {
+//   message: "Passwords don't match",
+//   path: ["confirmPassword"],
+// });
 
 type BusinessUserFormData = z.infer<typeof businessUserSchema>;
 
 const BusinessUserRegistrationForm = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { isLoading, error } = useAppSelector((state) => state.business);
+   const { isLoading, error } = useAppSelector((state) => state.business);
 
   const {
     register,
