@@ -1,50 +1,42 @@
 // src/components/common/ProtectedRoute.tsx
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { validateTokenAsync } from '../../store/slices/authSlice';
+import { useAuth } from '../../hooks/useAuth';
+import LoadingSpinner from './LoadingSpinner';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRoles?: string[];
+  requiredRole?: string | string[];
+  fallbackPath?: string;
 }
 
-const ProtectedRoute = ({ children, requiredRoles = [] }: ProtectedRouteProps) => {
-  const dispatch = useAppDispatch();
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
+  children,
+  requiredRole,
+  fallbackPath = '/login'
+}) => {
+  const { isAuthenticated, user, isInitialized, isLoading } = useAuth();
   const location = useLocation();
-  const { isAuthenticated, user, isLoading } = useAppSelector((state) => state.auth);
 
-  useEffect(() => {
-    if (!isAuthenticated && !isLoading) {
-      dispatch(validateTokenAsync());
-    }
-  }, [dispatch, isAuthenticated, isLoading]);
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-      </div>
-    );
+  // Show loading while initializing auth
+  if (!isInitialized || isLoading) {
+    return <LoadingSpinner />;
   }
 
+  // Redirect to login if not authenticated
   if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    return <Navigate to={fallbackPath} state={{ from: location }} replace />;
   }
 
-  if (requiredRoles.length > 0 && user) {
-    const hasRequiredRole = requiredRoles.includes(user.role);
+  // Check role-based access
+  if (requiredRole && user) {
+    const userRole = user.role;
+    const hasRequiredRole = Array.isArray(requiredRole)
+      ? requiredRole.includes(userRole)
+      : userRole === requiredRole;
+
     if (!hasRequiredRole) {
-      return (
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900">Access Denied</h1>
-            <p className="mt-2 text-gray-600">
-              You don't have permission to access this resource.
-            </p>
-          </div>
-        </div>
-      );
+      return <Navigate to="/unauthorized" replace />;
     }
   }
 

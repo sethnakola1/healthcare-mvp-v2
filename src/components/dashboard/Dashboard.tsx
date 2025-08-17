@@ -1,117 +1,280 @@
-// src/pages/Dashboard.tsx
-import React, { useEffect, useState } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
-import { BusinessRole } from '../../types/auth.types';
+// src/components/dashboard/Dashboard.tsx
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../hooks/useAuth';
+import { usePermissions } from '../../hooks/usePermissions';
+import {
+  Users,
+  Building2,
+  UserPlus,
+  Calendar,
+  FileText,
+  BarChart3,
+  Settings,
+  LogOut,
+  Bell,
+  Search,
+  Plus,
+  TrendingUp,
+  Activity,
+  DollarSign
+} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
+import { logoutAsync } from '../../store/slices/authSlice';
+import { toast } from 'react-hot-toast';
+import type { AppDispatch } from '../../store/store';
 
-interface DashboardStats {
-  totalUsers?: number;
-  totalHospitals?: number;
-  totalAppointments?: number;
-  totalRevenue?: number;
+// Dashboard Card Component
+interface DashboardCardProps {
+  title: string;
+  value: string | number;
+  icon: React.ReactNode;
+  trend?: {
+    value: number;
+    isPositive: boolean;
+  };
+  onClick?: () => void;
 }
 
+const DashboardCard: React.FC<DashboardCardProps> = ({
+  title,
+  value,
+  icon,
+  trend,
+  onClick
+}) => (
+  <div
+    className={`bg-white rounded-xl shadow-sm border border-gray-200 p-6 ${
+      onClick ? 'cursor-pointer hover:shadow-md transition-shadow' : ''
+    }`}
+    onClick={onClick}
+  >
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-sm font-medium text-gray-600">{title}</p>
+        <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
+        {trend && (
+          <div className={`flex items-center mt-2 text-sm ${
+            trend.isPositive ? 'text-green-600' : 'text-red-600'
+          }`}>
+            <TrendingUp className={`h-4 w-4 mr-1 ${
+              trend.isPositive ? '' : 'transform rotate-180'
+            }`} />
+            {trend.value}%
+          </div>
+        )}
+      </div>
+      <div className="bg-indigo-50 p-3 rounded-lg">
+        {icon}
+      </div>
+    </div>
+  </div>
+);
+
+// Quick Action Button Component
+interface QuickActionProps {
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  onClick: () => void;
+  variant?: 'primary' | 'secondary';
+}
+
+const QuickAction: React.FC<QuickActionProps> = ({
+  title,
+  description,
+  icon,
+  onClick,
+  variant = 'secondary'
+}) => (
+  <button
+    onClick={onClick}
+    className={`w-full text-left p-4 rounded-xl border transition-all ${
+      variant === 'primary'
+        ? 'bg-indigo-50 border-indigo-200 hover:bg-indigo-100'
+        : 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-sm'
+    }`}
+  >
+    <div className="flex items-center space-x-3">
+      <div className={`p-2 rounded-lg ${
+        variant === 'primary' ? 'bg-indigo-100' : 'bg-gray-100'
+      }`}>
+        {icon}
+      </div>
+      <div className="flex-1">
+        <h3 className="font-medium text-gray-900">{title}</h3>
+        <p className="text-sm text-gray-600">{description}</p>
+      </div>
+    </div>
+  </button>
+);
+
+// Main Dashboard Component
 const Dashboard: React.FC = () => {
-  const { authState, logout, hasRole } = useAuth();
-  const [stats, setStats] = useState<DashboardStats>({});
-  const [isLoading, setIsLoading] = useState(true);
+  const { user, userRole } = useAuth();
+  const permissions = usePermissions();
+  const navigate = useNavigate();
+  const dispatch = useDispatch<AppDispatch>();
 
-  const user = authState.user;
+  const [dashboardData, setDashboardData] = useState({
+    totalUsers: 0,
+    totalHospitals: 0,
+    totalPatients: 0,
+    todayAppointments: 0,
+    revenue: 0,
+    loading: true
+  });
 
+  // Load dashboard data based on user role
   useEffect(() => {
-    // Simulate loading dashboard data
     const loadDashboardData = async () => {
-      setIsLoading(true);
       try {
-        // Here you would make API calls to get dashboard data
-        // For now, we'll use mock data
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        setStats({
-          totalUsers: 150,
-          totalHospitals: 25,
-          totalAppointments: 1200,
-          totalRevenue: 50000
-        });
+        // Mock data for now - replace with actual API calls
+        setTimeout(() => {
+          setDashboardData({
+            totalUsers: userRole === 'SUPER_ADMIN' ? 1250 : 45,
+            totalHospitals: userRole === 'SUPER_ADMIN' ? 85 : 1,
+            totalPatients: userRole === 'HOSPITAL_ADMIN' ? 2340 : 150,
+            todayAppointments: 23,
+            revenue: 125000,
+            loading: false
+          });
+        }, 1000);
       } catch (error) {
         console.error('Failed to load dashboard data:', error);
-      } finally {
-        setIsLoading(false);
+        setDashboardData(prev => ({ ...prev, loading: false }));
       }
     };
 
     loadDashboardData();
-  }, []);
+  }, [userRole]);
 
   const handleLogout = async () => {
     try {
-      await logout();
+      await dispatch(logoutAsync()).unwrap();
+      toast.success('Logged out successfully');
+      navigate('/login');
     } catch (error) {
-      console.error('Logout failed:', error);
+      toast.error('Logout failed');
     }
   };
 
-  const getRoleBasedContent = () => {
-    if (hasRole(BusinessRole.SUPER_ADMIN)) {
-      return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatCard title="Total Users" value={stats.totalUsers || 0} />
-          <StatCard title="Total Hospitals" value={stats.totalHospitals || 0} />
-          <StatCard title="Total Appointments" value={stats.totalAppointments || 0} />
-          <StatCard title="Total Revenue" value={`$${stats.totalRevenue || 0}`} />
-        </div>
-      );
+  // Role-specific quick actions
+  const getQuickActions = () => {
+    const actions: QuickActionProps[] = [];
+
+    if (permissions.canCreateBusinessUser) {
+      actions.push({
+        title: 'Create Business User',
+        description: 'Add new Super Admin or Tech Advisor',
+        icon: <UserPlus className="h-5 w-5 text-indigo-600" />,
+        onClick: () => navigate('/admin/users/create'),
+        variant: 'primary'
+      });
     }
 
-    if (hasRole(BusinessRole.TECH_ADVISOR)) {
-      return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <StatCard title="My Hospitals" value={user?.totalHospitalsBrought || 0} />
-          <StatCard title="Commission Earned" value={`$${user?.totalCommissionEarned || 0}`} />
-          <StatCard title="Monthly Target" value={user?.targetHospitalsMonthly || 0} />
-        </div>
-      );
+    if (permissions.canCreateHospital) {
+      actions.push({
+        title: 'Register Hospital',
+        description: 'Add new hospital to the system',
+        icon: <Building2 className="h-5 w-5 text-green-600" />,
+        onClick: () => navigate('/hospitals/create')
+      });
     }
 
-    if (hasRole(BusinessRole.HOSPITAL_ADMIN)) {
-      return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <StatCard title="Today's Appointments" value={25} />
-          <StatCard title="Total Doctors" value={12} />
-          <StatCard title="Active Patients" value={450} />
-        </div>
-      );
+    if (permissions.canCreateHospitalUser) {
+      actions.push({
+        title: 'Add Hospital Staff',
+        description: 'Register doctors, nurses, and staff',
+        icon: <Users className="h-5 w-5 text-blue-600" />,
+        onClick: () => navigate('/hospital/users/create')
+      });
     }
 
-    if (hasRole(BusinessRole.DOCTOR)) {
-      return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <StatCard title="Today's Appointments" value={8} />
-          <StatCard title="Patients Seen" value={156} />
-          <StatCard title="Pending Reports" value={3} />
-        </div>
-      );
+    if (permissions.canManagePatients) {
+      actions.push({
+        title: 'Register Patient',
+        description: 'Add new patient to the system',
+        icon: <UserPlus className="h-5 w-5 text-purple-600" />,
+        onClick: () => navigate('/patients/create')
+      });
     }
 
-    if (hasRole(BusinessRole.PATIENT)) {
-      return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <StatCard title="Upcoming Appointments" value={2} />
-          <StatCard title="Prescription Refills" value={1} />
-        </div>
-      );
+    if (permissions.canManageAppointments) {
+      actions.push({
+        title: 'Schedule Appointment',
+        description: 'Book new patient appointment',
+        icon: <Calendar className="h-5 w-5 text-orange-600" />,
+        onClick: () => navigate('/appointments/create')
+      });
     }
 
-    return (
-      <div className="text-center">
-        <p className="text-gray-500">Welcome to your dashboard!</p>
-      </div>
-    );
+    return actions;
   };
 
-  if (isLoading) {
+  // Role-specific dashboard cards
+  const getDashboardCards = () => {
+    const cards: DashboardCardProps[] = [];
+
+    if (userRole === 'SUPER_ADMIN') {
+      cards.push(
+        {
+          title: 'Total Hospitals',
+          value: dashboardData.totalHospitals,
+          icon: <Building2 className="h-6 w-6 text-indigo-600" />,
+          trend: { value: 12, isPositive: true },
+          onClick: () => navigate('/hospitals')
+        },
+        {
+          title: 'Business Users',
+          value: dashboardData.totalUsers,
+          icon: <Users className="h-6 w-6 text-green-600" />,
+          trend: { value: 8, isPositive: true },
+          onClick: () => navigate('/admin/users')
+        },
+        {
+          title: 'Monthly Revenue',
+          value: `$${dashboardData.revenue.toLocaleString()}`,
+          icon: <DollarSign className="h-6 w-6 text-yellow-600" />,
+          trend: { value: 23, isPositive: true }
+        }
+      );
+    }
+
+    if (['HOSPITAL_ADMIN', 'DOCTOR', 'NURSE'].includes(userRole || '')) {
+      cards.push(
+        {
+          title: 'Total Patients',
+          value: dashboardData.totalPatients,
+          icon: <Users className="h-6 w-6 text-blue-600" />,
+          trend: { value: 15, isPositive: true },
+          onClick: () => navigate('/patients')
+        },
+        {
+          title: "Today's Appointments",
+          value: dashboardData.todayAppointments,
+          icon: <Calendar className="h-6 w-6 text-purple-600" />,
+          onClick: () => navigate('/appointments')
+        },
+        {
+          title: 'Active Staff',
+          value: dashboardData.totalUsers,
+          icon: <Activity className="h-6 w-6 text-green-600" />,
+          onClick: () => navigate('/staff')
+        }
+      );
+    }
+
+    return cards;
+  };
+
+  if (dashboardData.loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading dashboard...</p>
+        </div>
       </div>
     );
   }
@@ -119,23 +282,55 @@ const Dashboard: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white shadow">
+      <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-              <p className="text-gray-600">Welcome back, {user?.firstName}!</p>
-            </div>
+          <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-4">
-              <div className="text-right">
-                <p className="text-sm font-medium text-gray-900">{user?.fullName}</p>
-                <p className="text-sm text-gray-500">{user?.roleDisplayName}</p>
+              <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
+                <Activity className="h-5 w-5 text-white" />
               </div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">
+                  HealthHorizon
+                </h1>
+                <p className="text-sm text-gray-600">{user?.roleDisplayName} Dashboard</p>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-4">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  className="w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+              </div>
+
+              <button className="p-2 text-gray-600 hover:text-gray-900 relative">
+                <Bell className="h-6 w-6" />
+                <span className="absolute top-0 right-0 h-2 w-2 bg-red-500 rounded-full"></span>
+              </button>
+
+              <div className="flex items-center space-x-3">
+                <div className="text-right">
+                  <p className="text-sm font-medium text-gray-900">{user?.fullName}</p>
+                  <p className="text-xs text-gray-600">{user?.email}</p>
+                </div>
+                <button
+                  onClick={() => navigate('/profile')}
+                  className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 hover:bg-indigo-200"
+                >
+                  {user?.firstName?.charAt(0)}
+                </button>
+              </div>
+
               <button
                 onClick={handleLogout}
-                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
+                className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:text-gray-900 border border-gray-300 rounded-lg hover:bg-gray-50"
               >
-                Logout
+                <LogOut className="h-4 w-4" />
+                <span>Logout</span>
               </button>
             </div>
           </div>
@@ -143,72 +338,65 @@ const Dashboard: React.FC = () => {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
-          {/* User Info Card */}
-          <div className="bg-white overflow-hidden shadow rounded-lg mb-6">
-            <div className="px-4 py-5 sm:p-6">
-              <h2 className="text-lg leading-6 font-medium text-gray-900 mb-4">
-                Account Information
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <dt className="text-sm font-medium text-gray-500">Email</dt>
-                  <dd className="text-sm text-gray-900">{user?.email}</dd>
-                </div>
-                <div>
-                  <dt className="text-sm font-medium text-gray-500">Role</dt>
-                  <dd className="text-sm text-gray-900">{user?.roleDisplayName}</dd>
-                </div>
-                {user?.phoneNumber && (
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500">Phone</dt>
-                    <dd className="text-sm text-gray-900">{user.phoneNumber}</dd>
-                  </div>
-                )}
-                {user?.territory && (
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500">Territory</dt>
-                    <dd className="text-sm text-gray-900">{user.territory}</dd>
-                  </div>
-                )}
-              </div>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Welcome Section */}
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold text-gray-900">
+            Welcome back, {user?.firstName}!
+          </h2>
+          <p className="text-gray-600 mt-1">
+            Here's what's happening with your healthcare system today.
+          </p>
+        </div>
+
+        {/* Dashboard Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          {getDashboardCards().map((card, index) => (
+            <DashboardCard key={index} {...card} />
+          ))}
+        </div>
+
+        {/* Quick Actions */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Quick Actions
+            </h3>
+            <div className="space-y-3">
+              {getQuickActions().map((action, index) => (
+                <QuickAction key={index} {...action} />
+              ))}
             </div>
           </div>
 
-          {/* Role-based Content */}
-          {getRoleBasedContent()}
-
-          {/* Quick Actions */}
-          <div className="mt-6">
-            <h2 className="text-lg leading-6 font-medium text-gray-900 mb-4">
-              Quick Actions
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {hasRole(BusinessRole.HOSPITAL_ADMIN) && (
-                <>
-                  <ActionButton title="Add Doctor" href="/doctors/new" />
-                  <ActionButton title="Add Patient" href="/patients/new" />
-                  <ActionButton title="View Appointments" href="/appointments" />
-                  <ActionButton title="Generate Reports" href="/reports" />
-                </>
-              )}
-              {hasRole(BusinessRole.DOCTOR) && (
-                <>
-                  <ActionButton title="View Appointments" href="/appointments" />
-                  <ActionButton title="Medical Records" href="/medical-records" />
-                  <ActionButton title="Prescriptions" href="/prescriptions" />
-                  <ActionButton title="Patient List" href="/patients" />
-                </>
-              )}
-              {hasRole(BusinessRole.PATIENT) && (
-                <>
-                  <ActionButton title="Book Appointment" href="/appointments/book" />
-                  <ActionButton title="View Records" href="/medical-records" />
-                  <ActionButton title="Prescriptions" href="/prescriptions" />
-                  <ActionButton title="Bills" href="/bills" />
-                </>
-              )}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Recent Activity
+            </h3>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="space-y-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <p className="text-sm text-gray-600">
+                    New patient registered: John Doe
+                  </p>
+                  <span className="text-xs text-gray-400">2 min ago</span>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  <p className="text-sm text-gray-600">
+                    Appointment scheduled for tomorrow
+                  </p>
+                  <span className="text-xs text-gray-400">15 min ago</span>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                  <p className="text-sm text-gray-600">
+                    System backup completed
+                  </p>
+                  <span className="text-xs text-gray-400">1 hour ago</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -216,38 +404,5 @@ const Dashboard: React.FC = () => {
     </div>
   );
 };
-
-// Reusable StatCard component
-const StatCard: React.FC<{ title: string; value: string | number }> = ({ title, value }) => (
-  <div className="bg-white overflow-hidden shadow rounded-lg">
-    <div className="p-5">
-      <div className="flex items-center">
-        <div className="flex-shrink-0">
-          <div className="w-8 h-8 bg-blue-500 rounded-md flex items-center justify-center">
-            <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
-            </svg>
-          </div>
-        </div>
-        <div className="ml-5 w-0 flex-1">
-          <dl>
-            <dt className="text-sm font-medium text-gray-500 truncate">{title}</dt>
-            <dd className="text-lg font-medium text-gray-900">{value}</dd>
-          </dl>
-        </div>
-      </div>
-    </div>
-  </div>
-);
-
-// Reusable ActionButton component
-const ActionButton: React.FC<{ title: string; href: string }> = ({ title, href }) => (
-  <a
-    href={href}
-    className="block p-4 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow"
-  >
-    <h3 className="text-sm font-medium text-gray-900">{title}</h3>
-  </a>
-);
 
 export default Dashboard;
