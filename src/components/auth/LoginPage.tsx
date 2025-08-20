@@ -1,8 +1,9 @@
 // src/pages/LoginPage.tsx
 import React, { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+// import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { BusinessRole } from '../../types/auth.types';
+import { useAuth } from '../../hooks/useAuth';
 
 interface LoginFormData {
   email: string;
@@ -16,7 +17,7 @@ interface FormErrors {
 }
 
 const LoginPage: React.FC = () => {
-  const { authState, login, clearError } = useAuth();
+  // const { authState, login, clearError } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 

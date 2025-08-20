@@ -16,6 +16,30 @@ export interface LoginResponse {
   loginTime: string;
 }
 
+// export interface UserProfile {
+//   userId: string;
+//   email: string;
+//   firstName: string;
+//   lastName: string;
+//   fullName: string;
+//   username: string;
+//   role: string;
+//   roleDisplayName: string;
+//   isActive: boolean;
+//   emailVerified: boolean;
+//   phoneNumber?: string;
+//   territory?: string;
+//   partnerCode?: string;
+//   lastLogin?: string;
+//   // createdAt: string;
+//   createdAt?: string; // Optional for backward compatibility
+//   // Business-specific fields for TECH_ADVISOR role
+//   commissionPercentage?: number;
+//   targetHospitalsMonthly?: number;
+//   totalHospitalsBrought?: number;
+//   totalCommissionEarned?: number;
+// }
+
 export interface UserProfile {
   userId: string;
   email: string;
@@ -31,13 +55,7 @@ export interface UserProfile {
   territory?: string;
   partnerCode?: string;
   lastLogin?: string;
-  // createdAt: string;
-  createdAt?: string; // Optional for backward compatibility
-  // Business-specific fields for TECH_ADVISOR role
-  commissionPercentage?: number;
-  targetHospitalsMonthly?: number;
-  totalHospitalsBrought?: number;
-  totalCommissionEarned?: number;
+  createdAt?: string;
 }
 
 export interface RegistrationRequest {
@@ -111,26 +129,57 @@ export interface User{
 // }
 
 
+// export interface AuthState {
+//   user: UserProfile | null;
+//   token: string | null;
+//   isAuthenticated: boolean;
+//   accessToken: string | null;
+//   loading: boolean;
+//   isLoading: boolean;
+//   isInitialized: boolean;
+//   refreshToken: string | null;
+//   loginAttempts: number;
+//   lastLoginAttempt: Date;
+//   error: string | null;
+//   sessionExpiry: number | null;
+// }
+
 export interface AuthState {
   user: UserProfile | null;
   token: string | null;
-  isAuthenticated: boolean;
-  accessToken: string | null;
-  loading: boolean;
-  isLoading: boolean;
-  isInitialized: boolean;
   refreshToken: string | null;
-  loginAttempts: number;
-  lastLoginAttempt: Date;
+  isAuthenticated: boolean;
+  isLoading: boolean;
   error: string | null;
   sessionExpiry: number | null;
 }
 
 
-export interface BusinessUser extends User {
-  territory: string;
-  businessId?: string;
+// export interface BusinessUser extends User {
+//   territory: string;
+//   businessId?: string;
+// }
+
+export interface BusinessUser {
+  businessUserId: string;
+  username: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  phoneNumber?: string;
+  businessRole: string;
+  partnerCode?: string;
+  territory?: string;
+  isActive: boolean;
+  emailVerified: boolean;
 }
+
+// export interface BusinessState {
+//   users: BusinessUser[];
+//   currentUser: BusinessUser | null;
+//   loading: boolean;
+//   error: string | null;
+// }
 
 export interface BusinessState {
   users: BusinessUser[];
@@ -198,6 +247,19 @@ export interface LoginRequest {
   email: string;
   password: string;
 }
+
+// export interface LoginResponse {
+//   accessToken: string;
+//   refreshToken: string;
+//   tokenType: string;
+//   expiresIn: number;
+//   userId: string;
+//   email: string;
+//   firstName: string;
+//   lastName: string;
+//   role: string;
+//   loginTime: string;
+//}
 
 export interface LoginResponse {
   accessToken: string;
