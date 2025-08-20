@@ -1,38 +1,16 @@
-// src/store/slices/authSlice.ts
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { apiService } from '../../services/api.service';
-import type { LoginRequest } from '../../services/api.service';
-
-// Types
-export interface User {
-  userId: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  fullName: string;
-  username: string;
-  role: string;
-  roleDisplayName: string;
-  isActive: boolean;
-  emailVerified: boolean;
-  phoneNumber?: string;
-  territory?: string;
-  partnerCode?: string;
-  lastLogin?: string;
-  createdAt?: string;
-  // Business-specific fields
-  commissionPercentage?: number;
-  targetHospitalsMonthly?: number;
-  totalHospitalsBrought?: number;
-  totalCommissionEarned?: number;
-}
+import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { LoginRequest, User } from '../../types/auth.types';
+import { apiService } from '../../services';
 
 export interface AuthState {
   user: User | null;
+  users: User[] | null; // Assuming you want to track multiple users
+  token: string | null;
   accessToken: string | null;
   refreshToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  loading: boolean;
   error: string | null;
   loginAttempts: number;
   lastLoginAttempt: number | null;
@@ -42,14 +20,17 @@ export interface AuthState {
 // Initial state
 const initialState: AuthState = {
   user: null,
-  accessToken: localStorage.getItem('accessToken'),
-  refreshToken: localStorage.getItem('refreshToken'),
+  users: null,
+  token: null,
   isAuthenticated: false,
   isLoading: false,
   error: null,
+  accessToken: localStorage.getItem('accessToken'),
+  refreshToken: localStorage.getItem('refreshToken'),
   loginAttempts: 0,
   lastLoginAttempt: null,
   isInitialized: false,
+  loading: false
 };
 
 // Async thunks
@@ -140,6 +121,28 @@ const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
+    loginStart: (state) => {
+      state.loading = true;
+      state.error = null;
+    },
+    loginSuccess: (state, action: PayloadAction<{ user: User; token: string }>) => {
+      state.loading = false;
+      state.user = action.payload.user;
+      state.token = action.payload.token;
+      state.isAuthenticated = true;
+      state.error = null;
+    },
+    loginFailure: (state, action: PayloadAction<string>) => {
+      state.loading = false;
+      state.error = action.payload;
+      state.isAuthenticated = false;
+    },
+    logout: (state) => {
+      state.user = null;
+      state.token = null;
+      state.isAuthenticated = false;
+      state.error = null;
+    },
     clearError: (state) => {
       state.error = null;
     },
@@ -289,7 +292,7 @@ const authSlice = createSlice({
 
 // Actions
 export const {
-  clearError,
+  // clearError,
   resetAuthState,
   updateTokens,
   incrementLoginAttempts,
@@ -338,4 +341,5 @@ export const selectIsRateLimited = (state: { auth: AuthState }) => {
   return false;
 };
 
+export const { loginStart, loginSuccess, loginFailure, logout, clearError } = authSlice.actions;
 export default authSlice.reducer;

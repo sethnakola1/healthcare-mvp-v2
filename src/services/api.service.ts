@@ -1,3 +1,6 @@
+import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from "axios";
+import toast from "react-hot-toast";
+
 // Types
 export interface ApiResponse<T = any> {
   success: boolean;

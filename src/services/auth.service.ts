@@ -1,6 +1,6 @@
 // src/services/auth.service.ts
 import { apiService } from './api.service';
-import { SecurityUtils } from '../utils/security';
+// import { SecurityUtils } from '../utils/security';
 import {
   LoginRequest,
   LoginResponse,
@@ -8,9 +8,15 @@ import {
   RefreshTokenRequest,
   ChangePasswordRequest
 } from '../types/auth.types';
-import { BaseResponse } from '../types/common.types';
+import { SecurityUtils } from '../utils/security.utils';
 
 export class AuthService {
+  static login(email: string, password: string) {
+    throw new Error('Method not implemented.');
+  }
+  static getCurrentUser() {
+    throw new Error('Method not implemented.');
+  }
   private static instance: AuthService;
 
   private constructor() {}

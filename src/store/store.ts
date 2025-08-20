@@ -1,11 +1,12 @@
 // src/store/store.ts
-import { configureStore } from '@reduxjs/toolkit';
-import authReducer from './slices/authSlice';
+import { configureStore, Dispatch, ThunkDispatch, UnknownAction } from '@reduxjs/toolkit';
+import authReducer, { AuthState } from './slices/authSlice';
 
 // Configure the store
 export const store = configureStore({
   reducer: {
     auth: authReducer,
+    // business : businessReducer, // Assuming you have a businessReducer
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
@@ -21,4 +22,8 @@ setupListeners(store.dispatch);
 
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
+
+function setupListeners(dispatch: ThunkDispatch<{ auth: AuthState; }, undefined, UnknownAction> & Dispatch<UnknownAction>) {
+  throw new Error('Function not implemented.');
+}
 

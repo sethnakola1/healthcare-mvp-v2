@@ -9,13 +9,14 @@ import {
   RegistrationRequest
 } from '../types/auth.types';
 
+
 // Action types for reducer
 type AuthAction =
   | { type: 'AUTH_START' }
+    | { type: 'AUTH_LOGOUT' }
+  | { type: 'CLEAR_ERROR' }
   | { type: 'AUTH_SUCCESS'; payload: { user: UserProfile; sessionExpiry: number } }
   | { type: 'AUTH_FAILURE'; payload: string }
-  | { type: 'AUTH_LOGOUT' }
-  | { type: 'CLEAR_ERROR' }
   | { type: 'UPDATE_USER'; payload: UserProfile };
 
 // Initial state
@@ -23,11 +24,15 @@ const initialState: AuthState = {
   isAuthenticated: false,
   user: null,
   isLoading: true, // Start with loading to check existing session
+  loading: true, // Alias for isLoading
   error: null,
   sessionExpiry: null,
   token: null,
-  refreshToken: null
-};
+  refreshToken: null,
+  accessToken: null, // Initialize accessToken
+  isInitialized: false, // Initialize isInitialized
+  loginAttempts: 0,
+  lastLoginAttempt: new Date(), };
 
 // Auth reducer with security considerations
 const authReducer = (state: AuthState, action: AuthAction): AuthState => {
@@ -160,13 +165,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         throw new Error('Invalid email format');
       }
 
-      const loginResponse = await AuthService.login(email, password);
+      // const loginResponse = await AuthService.login(email, password);
 
       // Get user profile
       const user = await AuthService.getCurrentUser();
 
       // Calculate session expiry
-      const sessionExpiry = Date.now() + (loginResponse.expiresIn * 1000);
+      const sessionExpiry = Date.now() + (3600 * 1000); // Default to 1 hour if expiresIn is not provided
 
       dispatch({
         type: 'AUTH_SUCCESS',
@@ -224,7 +229,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         throw new Error('Password must be at least 8 characters long');
       }
 
-      const user = await AuthService.register(data);
+      await AuthService.register(data);
 
       // Auto-login after registration is not recommended for security
       // Instead, redirect to login page

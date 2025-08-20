@@ -12,6 +12,12 @@ import Unauthorized from './components/common/Unauthorized';
 import LoadingSpinner from './components/common/LoadingSpinner';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
+// import React from 'react';
+// import { Provider } from 'react-redux';
+// import { store } from './store';
+// import BusinessUserRegistrationForm from './components/business/forms/BusinessUserRegistrationForm';
+import './App.css';
+
 // Security: Add CSP meta tag
 const addCSPMeta = () => {
   const meta = document.createElement('meta');

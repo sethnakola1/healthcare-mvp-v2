@@ -1,7 +1,6 @@
-// src/pages/LandingPage.tsx
 import React from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-// import { useAuth } from '../contexts/AuthContext';
+
 
 const LandingPage: React.FC = () => {
   const { authState } = useAuth();

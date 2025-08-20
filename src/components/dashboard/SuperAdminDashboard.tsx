@@ -3,11 +3,11 @@ import { Link } from 'react-router-dom';
 import { useAppSelector } from '../../store/hooks';
 
 const SuperAdminDashboard = () => {
-  const { user } = useAppSelector((state) => state.auth);
-  const { users } = useAppSelector((state) => state.business);
+  const { user, users } = useAppSelector((state) => state.auth);
 
+  // Ensure users is an array before accessing .length
   const stats = [
-    { name: 'Total Users', value: users.length },
+    { name: 'Total Users', value: users ? users.length : 0 },
     { name: 'Active Sessions', value: '1' },
     { name: 'System Status', value: 'Online' },
   ];

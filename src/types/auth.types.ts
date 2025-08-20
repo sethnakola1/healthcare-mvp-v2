@@ -1,5 +1,3 @@
-// src/types/auth.types.ts
-
 export interface LoginRequest {
   email: string;
   password: string;
@@ -33,7 +31,8 @@ export interface UserProfile {
   territory?: string;
   partnerCode?: string;
   lastLogin?: string;
-  createdAt: string;
+  // createdAt: string;
+  createdAt?: string; // Optional for backward compatibility
   // Business-specific fields for TECH_ADVISOR role
   commissionPercentage?: number;
   targetHospitalsMonthly?: number;
@@ -63,34 +62,97 @@ export enum BusinessRole {
   PATIENT = 'PATIENT'
 }
 
+// export interface User {
+//   id: string;
+//   email: string;
+//   firstName: string;
+//   lastName: string;
+//   phoneNumber?: string;
+//   role: 'SUPER_ADMIN' | 'TECH_ADVISOR' | 'DOCTOR' | 'PATIENT';
+// }
+
+export interface User{
+  userId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  username: string;
+  // role: BusinessRole;
+  roleDisplayName: string;
+  isActive: boolean;
+  emailVerified: boolean;
+  phoneNumber?: string;
+  territory?: string;
+  partnerCode?: string;
+  lastLogin?: string;
+  // createdAt: string;
+  role: string;
+}
+
+
+
+// export interface User {
+//   userId: string;
+//   email: string;
+//   firstName: string;
+//   lastName: string;
+//   fullName: string;
+//   username: string;
+//   role: string;
+//   roleDisplayName: string;
+//   isActive: boolean;
+//   emailVerified: boolean;
+//   phoneNumber?: string;
+//   territory?: string;
+//   partnerCode?: string;
+//   lastLogin?: string;
+//   createdAt?: string;
+// }
+
+
 export interface AuthState {
-  isAuthenticated: boolean;
   user: UserProfile | null;
   token: string | null;
-  refreshToken: string | null;
+  isAuthenticated: boolean;
+  accessToken: string | null;
+  loading: boolean;
   isLoading: boolean;
+  isInitialized: boolean;
+  refreshToken: string | null;
+  loginAttempts: number;
+  lastLoginAttempt: Date;
   error: string | null;
   sessionExpiry: number | null;
 }
 
-// export interface AuthState {
-//   isAuthenticated: boolean;
-//   user: User | null;
-//   accessToken: string | null;
-//   refreshToken: string | null;
-//   isLoading: boolean;
-//   error: string | null;
-// }
 
-export interface AuthContextType {
-  authState: AuthState;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
-  register: (data: RegistrationRequest) => Promise<void>;
-  refreshAuth: () => Promise<void>;
-  clearError: () => void;
-  hasRole: (role: BusinessRole) => boolean;
-  hasAnyRole: (roles: BusinessRole[]) => boolean;
+export interface BusinessUser extends User {
+  territory: string;
+  businessId?: string;
+}
+
+export interface BusinessState {
+  users: BusinessUser[];
+  currentUser: BusinessUser | null;
+  loading: boolean;
+  error: string | null;
+}
+
+export interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
+export interface BusinessUserFormData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+  phoneNumber?: string;
+  territory: string;
+  role: 'SUPER_ADMIN' | 'TECH_ADVISOR';
 }
 
 // API Response wrapper type
@@ -129,23 +191,6 @@ export interface DashboardData {
   notifications?: any[];
 }
 
-export interface User{
-  userId: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  fullName: string;
-  username: string;
-  role: BusinessRole;
-  roleDisplayName: string;
-  isActive: boolean;
-  emailVerified: boolean;
-  phoneNumber?: string;
-  territory?: string;
-  partnerCode?: string;
-  lastLogin?: string;
-  createdAt: string;
-}
 
 
 // src/types/auth.types.ts
@@ -167,24 +212,6 @@ export interface LoginResponse {
   loginTime: string;
 }
 
-export interface User {
-  userId: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  fullName: string;
-  username: string;
-  role: string;
-  roleDisplayName: string;
-  isActive: boolean;
-  emailVerified: boolean;
-  phoneNumber?: string;
-  territory?: string;
-  partnerCode?: string;
-  lastLogin?: string;
-  createdAt?: string;
-}
-
 
 
 export interface RefreshTokenRequest {
@@ -194,4 +221,15 @@ export interface RefreshTokenRequest {
 export interface ChangePasswordRequest {
   currentPassword: string;
   newPassword: string;
+}
+
+export interface AuthContextType {
+  authState: AuthState;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
+  register: (data: RegistrationRequest) => Promise<void>;
+  refreshAuth: () => Promise<void>;
+  clearError: () => void;
+  hasRole: (role: BusinessRole) => boolean;
+  hasAnyRole: (roles: BusinessRole[]) => boolean;
 }
