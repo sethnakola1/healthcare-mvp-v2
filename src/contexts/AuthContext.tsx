@@ -1,26 +1,26 @@
 import React, { createContext, useContext, useReducer, useCallback, useEffect } from 'react';
 import AuthService from '../services/api.service';
-import { UserProfile, AuthState, AuthContextType } from '../types/auth.types';
-
-// interface AuthContextType {
-//   user: UserProfile | null;
-//   isAuthenticated: boolean;
-//   isLoading: boolean;
-//   error: string | null;
-//   login: (email: string, password: string) => Promise<void>;
-//   logout: () => Promise<void>;
-//   checkSession: () => Promise<void>;
-// }
+import { UserProfile, AuthState } from '../types/auth.types';
 
 interface AuthContextType {
-  user: any | null;  // Add this line
+  user: UserProfile | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   checkSession: () => Promise<void>;
 }
+
+// interface AuthContextType {
+//   user: any | null;  // Add this line
+//   isAuthenticated: boolean;
+//   isLoading: boolean;
+//   error: string | null;
+//   login: (email: string, password: string) => Promise<void>;
+//   logout: () => void;
+//   checkSession: () => Promise<void>;
+// }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 

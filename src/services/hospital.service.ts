@@ -1,6 +1,8 @@
 // src/services/hospital.service.ts
-import { apiService } from './api.service';
+// import { apiService } from './api.service';
+// import { apiService } from '.';
 import { Hospital, CreateHospitalRequest } from '../types/hospital.types';
+import apiService from './api.service';
 
 export class HospitalService {
   private static instance: HospitalService;

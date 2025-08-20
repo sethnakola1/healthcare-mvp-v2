@@ -1,7 +1,8 @@
 // src/services/patient.service.ts
-import { apiService } from './api.service';
+// import { apiService } from './api.service';
 import { Patient, CreatePatientRequest } from '../types/patient.types';
 import { PaginatedResponse } from '../types/common.types';
+import apiService from './api.service';
 
 export class PatientService {
   private static instance: PatientService;

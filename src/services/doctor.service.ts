@@ -1,7 +1,8 @@
 // src/services/doctor.service.ts
-import { apiService } from './api.service';
+// import { apiService } from './api.service';
 import { DoctorDto, CreateDoctorRequest } from '../types/doctor.types';
 import { ApiResponse } from '../types/api.types';
+// import { apiService } from '.';
 
 class DoctorService {
   // Create doctor

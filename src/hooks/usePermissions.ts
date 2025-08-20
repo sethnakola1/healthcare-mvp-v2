@@ -1,5 +1,6 @@
 // src/hooks/usePermissions.ts
-import { useAppSelector } from './redux';
+// import { useAppSelector } from './redux';
+import { useAppSelector } from '../store/hooks';
 import {
   selectCanCreateBusinessUser,
   selectCanCreateHospital,

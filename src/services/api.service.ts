@@ -1,5 +1,8 @@
 import axios, { AxiosResponse } from 'axios';
 import { LoginResponse, UserProfile } from '../types/auth.types';
+import { CreatePatientRequest } from '../types/patient.types';
+// import { CreatePatientRequest } from '../types/patient.types';
+// import { CreatePatientRequest } from '../types/patient.types';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
 
@@ -36,6 +39,15 @@ export interface BaseResponse<T> {
 }
 
 class AuthService {
+  post<T>(arg0: string, patientData: CreatePatientRequest) {
+    throw new Error('Method not implemented.');
+  }
+  get<T>(arg0: string) {
+    throw new Error('Method not implemented.');
+  }
+  put<T>(arg0: string, patientData: CreatePatientRequest) {
+    throw new Error('Method not implemented.');
+  }
   async login(credentials: LoginRequest): Promise<LoginResponse> {
     try {
       const response: AxiosResponse<BaseResponse<LoginResponse>> = await api.post('/auth/login', credentials);

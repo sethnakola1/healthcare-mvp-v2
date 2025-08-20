@@ -6,7 +6,7 @@ import { store } from './store/store';
 import { useAuth } from './hooks/useAuth';
 
 // Components
-import LoginForm from './components/auth/LoginForm';
+
 import Dashboard from './components/dashboard/Dashboard';
 import Unauthorized from './components/common/Unauthorized';
 import LoadingSpinner from './components/common/LoadingSpinner';
@@ -17,6 +17,7 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 // import { store } from './store';
 // import BusinessUserRegistrationForm from './components/business/forms/BusinessUserRegistrationForm';
 import './App.css';
+import LoginPage from './components/auth/LoginPage';
 
 // Security: Add CSP meta tag
 const addCSPMeta = () => {
@@ -87,7 +88,7 @@ const AppContent: React.FC = () => {
               isAuthenticated ? (
                 <Navigate to="/dashboard" replace />
               ) : (
-                <LoginForm />
+                <LoginPage />
               )
             }
           />

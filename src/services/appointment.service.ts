@@ -1,7 +1,9 @@
 // src/services/appointment.service.ts
-import { apiService } from './api.service';
+// import { apiService } from './api.service';
 import { AppointmentDto, CreateAppointmentRequest } from '../types/appointment.types';
 import { ApiResponse } from '../types/api.types';
+import apiService from './api.service';
+// import { apiService } from '.';
 
 class AppointmentService {
   // Book new appointment
