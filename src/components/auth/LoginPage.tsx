@@ -1,122 +1,128 @@
 // src/components/LoginPage.tsx
-import React, { useState, useEffect } from 'react';
-import { useAppDispatch, useAppSelector } from '../../hooks/redux';
-import { loginUser, clearError } from '../../store/slices/authSlice';
+import React, { useState, FormEvent } from 'react';
+import { useAuth, LoginCredentials } from '../contexts/AuthContext';
 import './LoginPage.css';
 
-interface FormErrors {
-  email?: string;
-  password?: string;
-  general?: string;
-}
-
-const LoginPage: React.FC = () => {
-  const dispatch = useAppDispatch();
-  const { isLoading, error } = useAppSelector((state) => state.auth);
-  const [formData, setFormData] = useState({
+export const LoginPage: React.FC = () => {
+  const { login, isLoading, error, clearError } = useAuth();
+  const [formData, setFormData] = useState<LoginCredentials>({
     email: '',
-    password: ''
+    password: '',
   });
-  const [formErrors, setFormErrors] = useState<FormErrors>({});
+  const [validationErrors, setValidationErrors] = useState<Partial<LoginCredentials>>({});
   const [showPassword, setShowPassword] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Clear errors when user starts typing
-  useEffect(() => {
-    if (formErrors.email || formErrors.password) {
-      setFormErrors(prev => ({ ...prev, email: '', password: '' }));
-    }
-  }, [formData.email, formData.password, formErrors.email, formErrors.password]);
-
-  // Clear Redux error when component unmounts
-  useEffect(() => {
-    return () => {
-      dispatch(clearError());
-    };
-  }, [dispatch]);
-
-  const validateForm = (): boolean => {
-    const newErrors: FormErrors = {};
-
-    // Email validation
-    if (!formData.email) {
-      newErrors.email = 'Email is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email address';
-    }
-
-    // Password validation
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters long';
-    }
-
-    setFormErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
+  // Handle input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
+
+    // Clear validation error for this field
+    if (validationErrors[name as keyof LoginCredentials]) {
+      setValidationErrors(prev => ({
+        ...prev,
+        [name]: undefined,
+      }));
+    }
+
+    // Clear global error when user starts typing
+    if (error) {
+      clearError();
+    }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Validate form
+  const validateForm = (): boolean => {
+    const errors: Partial<LoginCredentials> = {};
+
+    if (!formData.email.trim()) {
+      errors.email = 'Email is required';
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      errors.email = 'Please enter a valid email address';
+    }
+
+    if (!formData.password) {
+      errors.password = 'Password is required';
+    } else if (formData.password.length < 6) {
+      errors.password = 'Password must be at least 6 characters';
+    }
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  // Handle form submission
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (!validateForm()) {
       return;
     }
 
-    setIsSubmitting(true);
-    dispatch(clearError());
-
     try {
-      await dispatch(loginUser({
-        email: formData.email,
-        password: formData.password
-      })).unwrap();
-      // Success is handled by Redux and routing
+      await login(formData);
     } catch (error) {
-      // Error is handled by Redux state
+      // Error is handled by the AuthContext
       console.error('Login failed:', error);
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
-  const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
+  // Handle demo login for different roles
+  const handleDemoLogin = async (role: string) => {
+    const demoCredentials: Record<string, LoginCredentials> = {
+      superadmin: {
+        email: 'sethna.kola@healthcareplatform.com',
+        password: 'SuperAdmin123!',
+      },
+      admin: {
+        email: 'admin@hospital.com',
+        password: 'Admin123!',
+      },
+      doctor: {
+        email: 'doctor@hospital.com',
+        password: 'Doctor123!',
+      },
+      patient: {
+        email: 'patient@hospital.com',
+        password: 'Patient123!',
+      },
+    };
+
+    const credentials = demoCredentials[role];
+    if (credentials) {
+      setFormData(credentials);
+      try {
+        await login(credentials);
+      } catch (error) {
+        console.error('Demo login failed:', error);
+      }
+    }
   };
 
   return (
-    <div className="login-container">
-      <div className="login-card">
+    <div className="login-page">
+      <div className="login-container">
         <div className="login-header">
-          <div className="logo">
-            <div className="logo-icon">
-              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7 7-7Z" fill="currentColor"/>
-              </svg>
-            </div>
-            <h1>HealthHorizon</h1>
-          </div>
-          <p className="login-subtitle">Sign in to your account</p>
+          <h1>Healthcare MVP</h1>
+          <p>Sign in to your account</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="login-form" noValidate>
+        <form onSubmit={handleSubmit} className="login-form">
+          {/* Global Error Message */}
           {error && (
-            <div className="error-banner" role="alert">
+            <div className="error-message global-error">
+              <span className="error-icon">⚠️</span>
               {error}
             </div>
           )}
 
+          {/* Email Field */}
           <div className="form-group">
             <label htmlFor="email" className="form-label">
-              Email address
+              Email Address
             </label>
             <input
               type="email"
@@ -124,89 +130,108 @@ const LoginPage: React.FC = () => {
               name="email"
               value={formData.email}
               onChange={handleInputChange}
-              className={`form-input ${formErrors.email ? 'error' : ''}`}
+              className={`form-input ${validationErrors.email ? 'error' : ''}`}
               placeholder="Enter your email"
+              disabled={isLoading}
               autoComplete="email"
-              disabled={isSubmitting || isLoading}
-              aria-describedby={formErrors.email ? 'email-error' : undefined}
             />
-            {formErrors.email && (
-              <span id="email-error" className="error-text" role="alert">
-                {formErrors.email}
-              </span>
+            {validationErrors.email && (
+              <span className="error-message">{validationErrors.email}</span>
             )}
           </div>
 
+          {/* Password Field */}
           <div className="form-group">
             <label htmlFor="password" className="form-label">
               Password
             </label>
-            <div className="password-input-wrapper">
+            <div className="password-input-container">
               <input
                 type={showPassword ? 'text' : 'password'}
                 id="password"
                 name="password"
                 value={formData.password}
                 onChange={handleInputChange}
-                className={`form-input ${formErrors.password ? 'error' : ''}`}
+                className={`form-input ${validationErrors.password ? 'error' : ''}`}
                 placeholder="Enter your password"
+                disabled={isLoading}
                 autoComplete="current-password"
-                disabled={isSubmitting || isLoading}
-                aria-describedby={formErrors.password ? 'password-error' : undefined}
               />
               <button
                 type="button"
                 className="password-toggle"
-                onClick={togglePasswordVisibility}
-                disabled={isSubmitting || isLoading}
+                onClick={() => setShowPassword(!showPassword)}
+                disabled={isLoading}
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
-                {showPassword ? (
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/>
-                    <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/>
-                    <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/>
-                    <line x1="2" y1="2" x2="22" y2="22"/>
-                  </svg>
-                ) : (
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
-                    <circle cx="12" cy="12" r="3"/>
-                  </svg>
-                )}
+                {showPassword ? '👁️' : '👁️‍🗨️'}
               </button>
             </div>
-            {formErrors.password && (
-              <span id="password-error" className="error-text" role="alert">
-                {formErrors.password}
-              </span>
+            {validationErrors.password && (
+              <span className="error-message">{validationErrors.password}</span>
             )}
           </div>
 
-          <div className="form-actions">
+          {/* Submit Button */}
+          <button
+            type="submit"
+            className="login-button"
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <>
+                <span className="loading-spinner small"></span>
+                Signing in...
+              </>
+            ) : (
+              'Sign In'
+            )}
+          </button>
+        </form>
+
+        {/* Demo Login Section */}
+        <div className="demo-section">
+          <div className="demo-header">
+            <span>Demo Accounts</span>
+          </div>
+          <div className="demo-buttons">
             <button
-              type="submit"
-              className="submit-button"
-              disabled={isSubmitting || isLoading}
+              onClick={() => handleDemoLogin('superadmin')}
+              className="demo-button super-admin"
+              disabled={isLoading}
             >
-              {isSubmitting || isLoading ? (
-                <>
-                  <div className="loading-spinner" />
-                  Signing in...
-                </>
-              ) : (
-                'Sign in'
-              )}
+              Super Admin
+            </button>
+            <button
+              onClick={() => handleDemoLogin('admin')}
+              className="demo-button admin"
+              disabled={isLoading}
+            >
+              Hospital Admin
+            </button>
+            <button
+              onClick={() => handleDemoLogin('doctor')}
+              className="demo-button doctor"
+              disabled={isLoading}
+            >
+              Doctor
+            </button>
+            <button
+              onClick={() => handleDemoLogin('patient')}
+              className="demo-button patient"
+              disabled={isLoading}
+            >
+              Patient
             </button>
           </div>
+        </div>
 
-          <div className="login-footer">
-            <p>Secure login protected by advanced security measures</p>
-          </div>
-        </form>
+        {/* Footer */}
+        <div className="login-footer">
+          <p>Healthcare Management System v1.0</p>
+          <p>© 2025 Sethna Kola. All rights reserved.</p>
+        </div>
       </div>
     </div>
   );
 };
-
-export default LoginPage;

@@ -1,243 +1,197 @@
-// src/components/dashboard/Dashboard.tsx
-import React, { useEffect, useState } from 'react';
-import { useAuth } from '../../hooks/useAuth';
-import { USER_ROLES } from '../../config/constants';
+// src/components/Dashboard.tsx
+import React from 'react';
+import { User } from '../contexts/AuthContext';
+import { getRoleColor, getRoleDisplayName } from '../config/constants';
+import './Dashboard.css';
 
-interface DashboardStats {
-  totalAppointments?: number;
-  todaysAppointments?: number;
-  totalPatients?: number;
-  totalDoctors?: number;
-  totalHospitals?: number;
-  pendingBills?: number;
+interface DashboardProps {
+  user: User;
 }
 
-const Dashboard: React.FC = () => {
-  const { user, isAuthenticated } = useAuth();
-  const [stats, setStats] = useState<DashboardStats>({});
-  const [loading, setLoading] = useState(true);
+export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
+  const roleColor = getRoleColor(user.role);
+  const roleDisplayName = getRoleDisplayName(user.role);
 
-  useEffect(() => {
-    if (isAuthenticated && user) {
-      fetchDashboardData();
-    }
-  }, [isAuthenticated, user]);
-
-  const fetchDashboardData = async () => {
-    try {
-      setLoading(true);
-      // TODO: Replace with actual API calls based on user role
-      // const response = await dashboardService.getDashboardStats(user.role);
-
-      // Mock data for now
-      const mockStats: DashboardStats = {
-        totalAppointments: 150,
-        todaysAppointments: 12,
-        totalPatients: 450,
-        totalDoctors: 25,
-        totalHospitals: 1,
-        pendingBills: 8,
-      };
-
-      setStats(mockStats);
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const renderRoleSpecificContent = () => {
-    if (!user) return null;
-
+  // Get role-specific dashboard content
+  const getDashboardContent = () => {
     switch (user.role) {
-      case USER_ROLES.SUPER_ADMIN:
+      case 'SUPER_ADMIN':
         return (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <StatCard
-              title="Total Hospitals"
-              value={stats.totalHospitals || 0}
-              icon="🏥"
-              color="bg-blue-500"
-            />
-            <StatCard
-              title="Total Doctors"
-              value={stats.totalDoctors || 0}
-              icon="👨‍⚕️"
-              color="bg-green-500"
-            />
-            <StatCard
-              title="Total Patients"
-              value={stats.totalPatients || 0}
-              icon="👥"
-              color="bg-purple-500"
-            />
-            <StatCard
-              title="Total Appointments"
-              value={stats.totalAppointments || 0}
-              icon="📅"
-              color="bg-orange-500"
-            />
+          <div className="dashboard-content">
+            <div className="stats-grid">
+              <div className="stat-card">
+                <h3>Total Users</h3>
+                <p className="stat-number">156</p>
+                <span className="stat-change positive">+12% from last month</span>
+              </div>
+              <div className="stat-card">
+                <h3>Active Hospitals</h3>
+                <p className="stat-number">24</p>
+                <span className="stat-change positive">+8% from last month</span>
+              </div>
+              <div className="stat-card">
+                <h3>Total Revenue</h3>
+                <p className="stat-number">$125,650</p>
+                <span className="stat-change positive">+15% from last month</span>
+              </div>
+              <div className="stat-card">
+                <h3>System Health</h3>
+                <p className="stat-number">99.9%</p>
+                <span className="stat-change neutral">Uptime</span>
+              </div>
+            </div>
           </div>
         );
 
-      case USER_ROLES.HOSPITAL_ADMIN:
+      case 'HOSPITAL_ADMIN':
         return (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <StatCard
-              title="Today's Appointments"
-              value={stats.todaysAppointments || 0}
-              icon="📅"
-              color="bg-blue-500"
-            />
-            <StatCard
-              title="Total Patients"
-              value={stats.totalPatients || 0}
-              icon="👥"
-              color="bg-green-500"
-            />
-            <StatCard
-              title="Pending Bills"
-              value={stats.pendingBills || 0}
-              icon="💰"
-              color="bg-red-500"
-            />
+          <div className="dashboard-content">
+            <div className="stats-grid">
+              <div className="stat-card">
+                <h3>Total Patients</h3>
+                <p className="stat-number">1,247</p>
+                <span className="stat-change positive">+5% from last month</span>
+              </div>
+              <div className="stat-card">
+                <h3>Today's Appointments</h3>
+                <p className="stat-number">48</p>
+                <span className="stat-change neutral">12 pending</span>
+              </div>
+              <div className="stat-card">
+                <h3>Active Doctors</h3>
+                <p className="stat-number">32</p>
+                <span className="stat-change positive">+2 new this month</span>
+              </div>
+              <div className="stat-card">
+                <h3>Revenue This Month</h3>
+                <p className="stat-number">$89,450</p>
+                <span className="stat-change positive">+12% from last month</span>
+              </div>
+            </div>
           </div>
         );
 
-      case USER_ROLES.DOCTOR:
+      case 'DOCTOR':
         return (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <StatCard
-              title="Today's Appointments"
-              value={stats.todaysAppointments || 0}
-              icon="📅"
-              color="bg-blue-500"
-            />
-            <StatCard
-              title="My Patients"
-              value={stats.totalPatients || 0}
-              icon="👥"
-              color="bg-green-500"
-            />
+          <div className="dashboard-content">
+            <div className="stats-grid">
+              <div className="stat-card">
+                <h3>Today's Appointments</h3>
+                <p className="stat-number">12</p>
+                <span className="stat-change neutral">3 completed</span>
+              </div>
+              <div className="stat-card">
+                <h3>Total Patients</h3>
+                <p className="stat-number">358</p>
+                <span className="stat-change positive">+8 new this month</span>
+              </div>
+              <div className="stat-card">
+                <h3>Pending Reports</h3>
+                <p className="stat-number">5</p>
+                <span className="stat-change warning">Need attention</span>
+              </div>
+              <div className="stat-card">
+                <h3>Next Appointment</h3>
+                <p className="stat-number">2:30 PM</p>
+                <span className="stat-change neutral">John Doe</span>
+              </div>
+            </div>
           </div>
         );
 
-      case USER_ROLES.PATIENT:
+      case 'PATIENT':
         return (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <StatCard
-              title="Upcoming Appointments"
-              value={stats.todaysAppointments || 0}
-              icon="📅"
-              color="bg-blue-500"
-            />
-            <StatCard
-              title="Pending Bills"
-              value={stats.pendingBills || 0}
-              icon="💰"
-              color="bg-red-500"
-            />
+          <div className="dashboard-content">
+            <div className="stats-grid">
+              <div className="stat-card">
+                <h3>Upcoming Appointments</h3>
+                <p className="stat-number">2</p>
+                <span className="stat-change neutral">Next: Tomorrow 10:00 AM</span>
+              </div>
+              <div className="stat-card">
+                <h3>Medical Records</h3>
+                <p className="stat-number">15</p>
+                <span className="stat-change positive">Updated last week</span>
+              </div>
+              <div className="stat-card">
+                <h3>Prescriptions</h3>
+                <p className="stat-number">3</p>
+                <span className="stat-change warning">1 expiring soon</span>
+              </div>
+              <div className="stat-card">
+                <h3>Outstanding Bills</h3>
+                <p className="stat-number">$245</p>
+                <span className="stat-change warning">Due in 5 days</span>
+              </div>
+            </div>
           </div>
         );
 
       default:
         return (
-          <div className="text-center py-8">
-            <p className="text-gray-500">Dashboard content not available for this role.</p>
+          <div className="dashboard-content">
+            <div className="welcome-card">
+              <h3>Welcome to Healthcare MVP</h3>
+              <p>Your role-specific dashboard is being prepared.</p>
+            </div>
           </div>
         );
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
-
   return (
-    <div className="p-6">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Welcome back, {user?.firstName} {user?.lastName}!
-        </h1>
-        <p className="text-gray-600">
-          Here's what's happening in your healthcare system today.
-        </p>
+    <div className="dashboard">
+      <div className="dashboard-header">
+        <div className="welcome-section">
+          <h1>Welcome back, {user.firstName}!</h1>
+          <p className="user-details">
+            <span className="role-badge" style={{ backgroundColor: roleColor }}>
+              {roleDisplayName}
+            </span>
+            {user.territory && <span className="territory">Territory: {user.territory}</span>}
+          </p>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="quick-actions">
+          <button className="quick-action-btn primary">
+            {user.role === 'PATIENT' ? 'Book Appointment' : 'New Record'}
+          </button>
+          <button className="quick-action-btn secondary">
+            {user.role === 'DOCTOR' ? 'View Schedule' : 'Reports'}
+          </button>
+        </div>
       </div>
 
-      {renderRoleSpecificContent()}
+      {getDashboardContent()}
 
-      {/* Quick Actions */}
-      <div className="mt-8">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <QuickActionCard
-            title="Schedule Appointment"
-            icon="📅"
-            onClick={() => {/* TODO: Navigate to appointment scheduling */}}
-          />
-          <QuickActionCard
-            title="Add Patient"
-            icon="👤"
-            onClick={() => {/* TODO: Navigate to patient registration */}}
-          />
-          <QuickActionCard
-            title="View Reports"
-            icon="📊"
-            onClick={() => {/* TODO: Navigate to reports */}}
-          />
-          <QuickActionCard
-            title="Settings"
-            icon="⚙️"
-            onClick={() => {/* TODO: Navigate to settings */}}
-          />
+      {/* Recent Activity */}
+      <div className="recent-activity">
+        <h2>Recent Activity</h2>
+        <div className="activity-list">
+          <div className="activity-item">
+            <div className="activity-icon">📋</div>
+            <div className="activity-content">
+              <p className="activity-title">New patient registered</p>
+              <p className="activity-time">2 hours ago</p>
+            </div>
+          </div>
+          <div className="activity-item">
+            <div className="activity-icon">📅</div>
+            <div className="activity-content">
+              <p className="activity-title">Appointment scheduled</p>
+              <p className="activity-time">4 hours ago</p>
+            </div>
+          </div>
+          <div className="activity-item">
+            <div className="activity-icon">💊</div>
+            <div className="activity-content">
+              <p className="activity-title">Prescription updated</p>
+              <p className="activity-time">1 day ago</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   );
 };
-
-interface StatCardProps {
-  title: string;
-  value: number;
-  icon: string;
-  color: string;
-}
-
-const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color }) => (
-  <div className="bg-white rounded-lg shadow-md p-6">
-    <div className="flex items-center justify-between">
-      <div>
-        <p className="text-sm font-medium text-gray-600">{title}</p>
-        <p className="text-3xl font-bold text-gray-900">{value.toLocaleString()}</p>
-      </div>
-      <div className={`${color} p-3 rounded-full text-white text-2xl`}>
-        {icon}
-      </div>
-    </div>
-  </div>
-);
-
-interface QuickActionCardProps {
-  title: string;
-  icon: string;
-  onClick: () => void;
-}
-
-const QuickActionCard: React.FC<QuickActionCardProps> = ({ title, icon, onClick }) => (
-  <button
-    onClick={onClick}
-    className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow duration-200 text-left"
-  >
-    <div className="flex items-center space-x-3">
-      <span className="text-2xl">{icon}</span>
-      <span className="font-medium text-gray-900">{title}</span>
-    </div>
-  </button>
-);
-
-export default Dashboard;
