@@ -1,3 +1,7 @@
+import { Hospital, AlertCircle, User, EyeOff, Eye, Loader2, ChevronRight } from "lucide-react";
+import { useState } from "react";
+import { useAuth } from "../../contexts/AuthContext";
+
 const LoginForm: React.FC = () => {
   const { login, loading } = useAuth();
   const [formData, setFormData] = useState({
