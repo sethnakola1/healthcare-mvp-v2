@@ -1,18 +1,4 @@
-// src/contexts/AuthContext.tsx
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { authService } from '../services/auth.service';
-import { User } from '../types/auth.types';
-
-interface AuthContextType {
-  user: User | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  logout: () => Promise<void>;
-  refreshAuth: () => Promise<void>;
-}
-
-export const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -22,75 +8,105 @@ export const useAuth = () => {
   return context;
 };
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+// Auth Provider
+const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [state, setState] = useState<AuthState>({
+    user: null,
+    token: null,
+    isAuthenticated: false,
+    loading: true,
+  });
 
-  const isAuthenticated = !!user;
-
-  // Check authentication status on app start
   useEffect(() => {
-    checkAuthStatus();
+    const initializeAuth = async () => {
+      const token = SecurityUtils.getItem('authToken');
+      if (token) {
+        try {
+          const user = await apiService.getCurrentUser(token);
+          setState({
+            user,
+            token,
+            isAuthenticated: true,
+            loading: false,
+          });
+        } catch (error) {
+          SecurityUtils.removeItem('authToken');
+          SecurityUtils.removeItem('authUser');
+          setState({
+            user: null,
+            token: null,
+            isAuthenticated: false,
+            loading: false,
+          });
+        }
+      } else {
+        setState(prev => ({ ...prev, loading: false }));
+      }
+    };
+
+    initializeAuth();
   }, []);
 
-  const checkAuthStatus = async () => {
-    try {
-      setIsLoading(true);
-      const currentUser = await authService.getCurrentUser();
-      setUser(currentUser);
-    } catch (error) {
-      setUser(null);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const login = async (email: string, password: string): Promise<void> => {
+    setState(prev => ({ ...prev, loading: true }));
 
-  const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      setIsLoading(true);
-      const response = await authService.login(email, password);
+      const loginResponse = await apiService.login(email, password);
+      const user = await apiService.getCurrentUser(loginResponse.accessToken);
       
-      if (response.success && response.user) {
-        setUser(response.user);
-        return { success: true };
-      } else {
-        return { success: false, error: response.error || 'Login failed' };
+      SecurityUtils.setItem('authToken', loginResponse.accessToken);
+      SecurityUtils.setItem('authUser', JSON.stringify(user));
+
+      setState({
+        user,
+        token: loginResponse.accessToken,
+        isAuthenticated: true,
+        loading: false,
+      });
+    } catch (error) {
+      setState(prev => ({ ...prev, loading: false }));
+      throw error;
+    }
+  };
+
+  const logout = async (): Promise<void> => {
+    if (state.token) {
+      try {
+        await apiService.logout(state.token);
+      } catch (error) {
+        console.error('Logout error:', error);
       }
-    } catch (error) {
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'An unexpected error occurred' 
-      };
-    } finally {
-      setIsLoading(false);
     }
+
+    SecurityUtils.clear();
+    setState({
+      user: null,
+      token: null,
+      isAuthenticated: false,
+      loading: false,
+    });
   };
 
-  const logout = async () => {
-    try {
-      await authService.logout();
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      setUser(null);
+  const getCurrentUser = async (): Promise<void> => {
+    if (state.token) {
+      try {
+        const user = await apiService.getCurrentUser(state.token);
+        setState(prev => ({ ...prev, user }));
+      } catch (error) {
+        console.error('Failed to get current user:', error);
+      }
     }
-  };
-
-  const refreshAuth = async () => {
-    await checkAuthStatus();
-  };
-
-  const value: AuthContextType = {
-    user,
-    isAuthenticated,
-    isLoading,
-    login,
-    logout,
-    refreshAuth
   };
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider
+      value={{
+        ...state,
+        login,
+        logout,
+        getCurrentUser,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

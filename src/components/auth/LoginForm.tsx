@@ -1,261 +1,192 @@
-import React, { useState, useEffect } from 'react';
-// import { useForm } from 'react-hook-form';
-import { Eye, EyeOff, Lock, Mail, AlertCircle } from 'lucide-react';
-import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { loginUser, clearError } from '../../store/slices/authSlice';
-import { SecurityUtils } from '../../utils/security.utils';
-import { LoginCredentials } from '../../types/auth.types';
-
-interface LoginFormData {
-  email: string;
-  password: string;
-}
-
-export const LoginForm: React.FC = () => {
-  const dispatch = useAppDispatch();
-  const { isLoading, error } = useAppSelector((state) => state.auth);
-  
-  const [showPassword, setShowPassword] = useState(false);
-  const [attempts, setAttempts] = useState(0);
-  const [isBlocked, setIsBlocked] = useState(false);
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isValid },
-    setError,
-    watch,
-  } = useForm<LoginFormData>({
-    mode: 'onChange',
+const LoginForm: React.FC = () => {
+  const { login, loading } = useAuth();
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
   });
+  const [errors, setErrors] = useState<{ [key: string]: string[] }>({});
+  const [showPassword, setShowPassword] = useState(false);
+  const [loginError, setLoginError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Watch form values for real-time validation
-  const formData = watch();
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
 
-  useEffect(() => {
-    // Clear errors when component mounts
-    dispatch(clearError());
-  }, [dispatch]);
-
-  useEffect(() => {
-    // Check if user is rate limited
-    const checkRateLimit = () => {
-      const canAttempt = SecurityUtils.checkRateLimit('login_check', 5, 15 * 60 * 1000);
-      setIsBlocked(!canAttempt);
-    };
-    
-    checkRateLimit();
-  }, [attempts]);
-
-  // Real-time validation feedback
-  useEffect(() => {
-    if (formData.email && !SecurityUtils.validateEmail(formData.email)) {
-      setError('email', {
-        type: 'manual',
-        message: 'Please enter a valid email address',
-      });
+    // Clear errors when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: [] }));
     }
-  }, [formData.email, setError]);
+    if (loginError) {
+      setLoginError('');
+    }
+  };
 
-  const onSubmit = async (data: LoginFormData) => {
-    if (isBlocked) {
-      setError('root', {
-        type: 'manual',
-        message: 'Too many login attempts. Please try again later.',
-      });
-      return;
+  const validateForm = (): boolean => {
+    const emailValidation = ValidationUtils.validateEmail(formData.email);
+    const passwordValidation = ValidationUtils.validatePassword(formData.password);
+
+    const newErrors: { [key: string]: string[] } = {};
+
+    if (!emailValidation.isValid) {
+      newErrors.email = emailValidation.errors;
     }
 
-    // Client-side validation
-    if (!SecurityUtils.validateEmail(data.email)) {
-      setError('email', {
-        type: 'manual',
-        message: 'Please enter a valid email address',
-      });
-      return;
-    }
-
-    const passwordValidation = SecurityUtils.validatePassword(data.password);
     if (!passwordValidation.isValid) {
-      setError('password', {
-        type: 'manual',
-        message: passwordValidation.errors[0],
-      });
+      newErrors.password = passwordValidation.errors;
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!validateForm()) {
       return;
     }
+
+    setIsSubmitting(true);
+    setLoginError('');
 
     try {
-      const credentials: LoginCredentials = {
-        email: SecurityUtils.sanitizeInput(data.email.toLowerCase().trim()),
-        password: data.password,
-      };
-
-      await dispatch(loginUser(credentials)).unwrap();
-      // Redirect will be handled by the auth effect
-    } catch (error: any) {
-      setAttempts(prev => prev + 1);
-      setError('root', {
-        type: 'manual',
-        message: error || 'Login failed. Please try again.',
-      });
+      await login(formData.email, formData.password);
+    } catch (error) {
+      setLoginError(error instanceof Error ? error.message : 'Login failed. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div className="bg-white rounded-xl shadow-2xl p-8">
-          <div className="text-center">
-            <div className="mx-auto h-12 w-12 bg-indigo-600 rounded-full flex items-center justify-center">
-              <Lock className="h-6 w-6 text-white" />
-            </div>
-            <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
-              Welcome to HealthHorizon
-            </h2>
-            <p className="mt-2 text-sm text-gray-600">
-              Sign in to your account
-            </p>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-full mb-4">
+            <Hospital className="w-8 h-8 text-white" />
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900">HealthHorizon</h1>
+          <p className="text-gray-600 mt-2">Healthcare Management System</p>
+        </div>
+
+        {/* Login Form */}
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
+          <div className="text-center mb-6">
+            <h2 className="text-2xl font-semibold text-gray-900">Welcome Back</h2>
+            <p className="text-gray-600 mt-1">Sign in to your account</p>
           </div>
 
-          <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
-            {(error || errors.root) && (
-              <div className="bg-red-50 border border-red-200 rounded-md p-4">
-                <div className="flex">
-                  <AlertCircle className="h-5 w-5 text-red-400" />
-                  <div className="ml-3">
-                    <p className="text-sm text-red-800">
-                      {error || errors.root?.message}
-                    </p>
-                  </div>
-                </div>
+          {loginError && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 flex items-start">
+              <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 mr-3 flex-shrink-0" />
+              <div>
+                <p className="text-red-800 text-sm font-medium">Login Failed</p>
+                <p className="text-red-700 text-sm mt-1">{loginError}</p>
               </div>
-            )}
+            </div>
+          )}
 
-            {isBlocked && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
-                <div className="flex">
-                  <AlertCircle className="h-5 w-5 text-yellow-400" />
-                  <div className="ml-3">
-                    <p className="text-sm text-yellow-800">
-                      Account temporarily locked due to multiple failed attempts.
-                      Please try again in 15 minutes.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Email Field */}
             <div>
-              <label htmlFor="email" className="sr-only">
-                Email address
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                Email Address
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-gray-400" />
-                </div>
                 <input
-                  {...register('email', {
-                    required: 'Email is required',
-                    pattern: {
-                      value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                      message: 'Please enter a valid email address',
-                    },
-                    maxLength: {
-                      value: 255,
-                      message: 'Email is too long',
-                    },
-                  })}
                   type="email"
-                  autoComplete="email"
-                  className={`appearance-none rounded-lg relative block w-full pl-10 pr-3 py-3 border ${
-                    errors.email ? 'border-red-300' : 'border-gray-300'
-                  } placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm`}
-                  placeholder="Email address"
-                  disabled={isLoading || isBlocked}
+                  id="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  className={`w-full px-4 py-3 rounded-lg border ${
+                    errors.email?.length ? 'border-red-300 bg-red-50' : 'border-gray-300 bg-white'
+                  } focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200`}
+                  placeholder="Enter your email"
+                  disabled={isSubmitting}
                 />
+                <User className="absolute right-3 top-3.5 w-5 h-5 text-gray-400" />
               </div>
-              {errors.email && (
-                <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
-              )}
+              {errors.email?.map((error, index) => (
+                <p key={index} className="text-red-600 text-sm mt-1">{error}</p>
+              ))}
             </div>
 
+            {/* Password Field */}
             <div>
-              <label htmlFor="password" className="sr-only">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
                 Password
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-400" />
-                </div>
                 <input
-                  {...register('password', {
-                    required: 'Password is required',
-                    minLength: {
-                      value: 8,
-                      message: 'Password must be at least 8 characters',
-                    },
-                  })}
                   type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  className={`appearance-none rounded-lg relative block w-full pl-10 pr-10 py-3 border ${
-                    errors.password ? 'border-red-300' : 'border-gray-300'
-                  } placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm`}
-                  placeholder="Password"
-                  disabled={isLoading || isBlocked}
+                  id="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  className={`w-full px-4 py-3 rounded-lg border ${
+                    errors.password?.length ? 'border-red-300 bg-red-50' : 'border-gray-300 bg-white'
+                  } focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 pr-12`}
+                  placeholder="Enter your password"
+                  disabled={isSubmitting}
                 />
                 <button
                   type="button"
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
                   onClick={() => setShowPassword(!showPassword)}
-                  disabled={isLoading || isBlocked}
+                  className="absolute right-3 top-3.5 w-5 h-5 text-gray-400 hover:text-gray-600"
+                  disabled={isSubmitting}
                 >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                  ) : (
-                    <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                  )}
+                  {showPassword ? <EyeOff /> : <Eye />}
                 </button>
               </div>
-              {errors.password && (
-                <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
+              {errors.password?.map((error, index) => (
+                <p key={index} className="text-red-600 text-sm mt-1">{error}</p>
+              ))}
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200 flex items-center justify-center"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  Signing in...
+                </>
+              ) : (
+                <>
+                  Sign In
+                  <ChevronRight className="w-5 h-5 ml-2" />
+                </>
               )}
-            </div>
-
-            <div>
-              <button
-                type="submit"
-                disabled={!isValid || isLoading || isBlocked}
-                className={`group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white ${
-                  (!isValid || isLoading || isBlocked)
-                    ? 'bg-gray-400 cursor-not-allowed'
-                    : 'bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500'
-                } transition-colors duration-200`}
-              >
-                {isLoading ? (
-                  <div className="flex items-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Signing in...
-                  </div>
-                ) : (
-                  'Sign in'
-                )}
-              </button>
-            </div>
-
-            <div className="text-center">
-              <p className="text-xs text-gray-500">
-                Secure login protected by advanced security measures
-              </p>
-            </div>
+            </button>
           </form>
+
+          {/* Demo Accounts */}
+          <div className="mt-8 p-4 bg-gray-50 rounded-lg">
+            <p className="text-sm font-medium text-gray-700 mb-3">Demo Accounts:</p>
+            <div className="space-y-2 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-600">Super Admin:</span>
+                <span className="font-mono text-gray-800">sethnakola@healthhorizon.com / SuperAdmin123!</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-600">Tech Advisor:</span>
+                <span className="font-mono text-gray-800">advisor@demo.com / TechAdvisor123!</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="text-center mt-6 text-sm text-gray-600">
+          <p>HealthHorizon MVP © 2025</p>
         </div>
       </div>
     </div>
   );
 };
-
-export default LoginForm;
-
-function useForm<T>(arg0: { mode: string; }): { register: any; handleSubmit: any; formState: { errors: any; isValid: any; }; setError: any; watch: any; } {
-  throw new Error('Function not implemented.');
-}

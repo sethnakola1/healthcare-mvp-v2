@@ -1,128 +1,100 @@
-import axios, { AxiosInstance, AxiosResponse, AxiosError } from 'axios';
-import { SecurityUtils } from '../utils/security.utils';
 
-export interface ApiResponse<T = any> {
-  success: boolean;
-  message: string;
-  data: T;
-  error?: string;
+import React, { useState, useContext, createContext, useEffect } from 'react';
+import { ChevronRight, Eye, EyeOff, Hospital, Shield, User, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+
+// Types
+interface User {
+  userId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  username: string;
+  role: string;
+  roleDisplayName: string;
+  isActive: boolean;
+  emailVerified: boolean;
+  phoneNumber?: string;
+  territory?: string;
+  partnerCode?: string;
+  lastLogin?: string;
+  createdAt?: string;
 }
 
-class ApiService {
-  private axiosInstance: AxiosInstance;
-  private baseURL: string;
+interface LoginResponse {
+  accessToken: string;
+  refreshToken: string;
+  tokenType: string;
+  expiresIn: number;
+  userId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  loginTime: string;
+}
 
-  constructor() {
-    this.baseURL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
-    
-    this.axiosInstance = axios.create({
-      baseURL: this.baseURL,
-      timeout: 30000,
-      withCredentials: true, // Important for HttpOnly cookies
+interface AuthState {
+  user: User | null;
+  token: string | null;
+  isAuthenticated: boolean;
+  loading: boolean;
+}
+
+interface AuthContextType extends AuthState {
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => void;
+  getCurrentUser: () => Promise<void>;
+}
+
+// API Service
+class ApiService {
+  private baseURL = 'http://localhost:8080/api';
+
+  async login(email: string, password: string): Promise<LoginResponse> {
+    const response = await fetch(`${this.baseURL}/auth/login`, {
+      method: 'POST',
       headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Login failed');
+    }
+
+    const data = await response.json();
+    return data.data;
+  }
+
+  async getCurrentUser(token: string): Promise<User> {
+    const response = await fetch(`${this.baseURL}/auth/me`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to get user details');
+    }
+
+    const data = await response.json();
+    return data.data;
+  }
+
+  async logout(token: string): Promise<void> {
+    await fetch(`${this.baseURL}/auth/logout`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
         'X-Requested-With': 'XMLHttpRequest', // CSRF protection
       },
     });
-
-    this.setupInterceptors();
-  }
-
-  private setupInterceptors(): void {
-    // Request interceptor
-    this.axiosInstance.interceptors.request.use(
-      (config) => {
-        // Add CSRF token if available
-        const csrfToken = this.getCsrfToken();
-        if (csrfToken) {
-          config.headers['X-CSRF-Token'] = csrfToken;
-        }
-
-        // Sanitize request data
-        if (config.data && typeof config.data === 'object') {
-          config.data = this.sanitizeRequestData(config.data);
-        }
-
-        return config;
-      },
-      (error) => {
-        return Promise.reject(error);
-      }
-    );
-
-    // Response interceptor
-    this.axiosInstance.interceptors.response.use(
-      (response: AxiosResponse) => {
-        return response;
-      },
-      async (error: AxiosError) => {
-        if (error.response?.status === 401) {
-          // Handle unauthorized - redirect to login
-          window.location.href = '/login';
-        }
-        
-        return Promise.reject(this.handleApiError(error));
-      }
-    );
-  }
-
-  private getCsrfToken(): string | null {
-    // Extract CSRF token from meta tag or cookie
-    const metaToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-    return metaToken || null;
-  }
-
-  private sanitizeRequestData(data: any): any {
-    if (typeof data === 'string') {
-      return SecurityUtils.sanitizeInput(data);
-    }
-    
-    if (Array.isArray(data)) {
-      return data.map(item => this.sanitizeRequestData(item));
-    }
-    
-    if (typeof data === 'object' && data !== null) {
-      const sanitized: any = {};
-      for (const key in data) {
-        if (data.hasOwnProperty(key)) {
-          sanitized[key] = this.sanitizeRequestData(data[key]);
-        }
-      }
-      return sanitized;
-    }
-    
-    return data;
-  }
-
-  private handleApiError(error: AxiosError): Error {
-    // Don't expose sensitive error details
-    if (process.env.REACT_APP_ENVIRONMENT === 'production') {
-      return new Error('An error occurred. Please try again.');
-    }
-    
-    return new Error(error.message || 'API request failed');
-  }
-
-  // HTTP Methods
-  async get<T>(url: string): Promise<ApiResponse<T>> {
-    const response = await this.axiosInstance.get<ApiResponse<T>>(url);
-    return response.data;
-  }
-
-  async post<T>(url: string, data?: any): Promise<ApiResponse<T>> {
-    const response = await this.axiosInstance.post<ApiResponse<T>>(url, data);
-    return response.data;
-  }
-
-  async put<T>(url: string, data?: any): Promise<ApiResponse<T>> {
-    const response = await this.axiosInstance.put<ApiResponse<T>>(url, data);
-    return response.data;
-  }
-
-  async delete<T>(url: string): Promise<ApiResponse<T>> {
-    const response = await this.axiosInstance.delete<ApiResponse<T>>(url);
-    return response.data;
   }
 }
 
-export const apiService = new ApiService();
+const apiService = new ApiService();
