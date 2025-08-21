@@ -47,12 +47,21 @@ export interface LoginCredentials {
 // src/types/auth.types.ts
 export interface User {
   id: string;
+  userId: string;
   email: string;
   firstName: string;
   lastName: string;
   role: UserRole;
   createdAt: string;
   updatedAt: string;
+  fullName: string;
+  roleDisplayName : string;
+  username: string;
+  phoneNumber: string;
+  territory: string;
+  isActive: boolean;
+  emailVerified: boolean;
+  
 }
 
 export enum UserRole {

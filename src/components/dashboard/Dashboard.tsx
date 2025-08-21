@@ -127,7 +127,7 @@ const Dashboard: React.FC = () => {
             {user?.roleDisplayName} Dashboard
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {user?.role === 'SUPER_ADMIN' && (
+            {user?.roleDisplayName === 'SUPER_ADMIN' && (
               <>
                 <div className="p-4 bg-purple-50 rounded-lg">
                   <h4 className="font-medium text-purple-900">System Management</h4>
@@ -143,7 +143,7 @@ const Dashboard: React.FC = () => {
                 </div>
               </>
             )}
-            {user?.role === 'TECH_ADVISOR' && (
+            {user?.roleDisplayName === 'TECH_ADVISOR' && (
               <>
                 <div className="p-4 bg-blue-50 rounded-lg">
                   <h4 className="font-medium text-blue-900">Hospital Management</h4>
@@ -159,7 +159,7 @@ const Dashboard: React.FC = () => {
                 </div>
               </>
             )}
-            {user?.role === 'HOSPITAL_ADMIN' && (
+            {user?.roleDisplayName === 'HOSPITAL_ADMIN' && (
               <>
                 <div className="p-4 bg-green-50 rounded-lg">
                   <h4 className="font-medium text-green-900">Patient Management</h4>
