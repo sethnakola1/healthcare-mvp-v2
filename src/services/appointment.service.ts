@@ -1,9 +1,9 @@
 // src/services/appointment.service.ts
-// import { apiService } from './api.service';
 import { AppointmentDto, CreateAppointmentRequest } from '../types/appointment.types';
 import { ApiResponse } from '../types/api.types';
 import apiService from './api.service';
-// import { apiService } from '.';
+import authService from './api.service';
+
 
 class AppointmentService {
   // Book new appointment
@@ -62,4 +62,15 @@ class AppointmentService {
   }
 }
 
+export const updateAppointmentStatus = async (appointmentId: string, status: string, reason?: string) => {
+  const data = { status, reason };
+  const response = await authService.put(`/appointments/${appointmentId}/status`, data);
+  return response.data;
+};
+
+export const cancelAppointment = async (appointmentId: string, reason: string) => {
+  const data = { reason };
+  const response = await authService.delete(`/appointments/${appointmentId}`, data);
+  return response.data;
+};
 export const appointmentService = new AppointmentService();

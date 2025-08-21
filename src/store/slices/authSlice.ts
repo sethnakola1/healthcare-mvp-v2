@@ -1,6 +1,6 @@
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { LoginRequest, User } from '../../types/auth.types';
-import { apiService } from '../../services';
+import {  User } from '../../types/auth.types';
+import {apiService, authService } from '../../services/api.service';
 
 export interface AuthState {
   user: User | null;
@@ -36,18 +36,38 @@ const initialState: AuthState = {
 // Async thunks
 export const loginAsync = createAsyncThunk(
   'auth/login',
-  async (credentials: LoginRequest, { rejectWithValue }) => {
+  async (
+    credentials: { email: string; password: string },
+    { rejectWithValue }
+  ) => {
     try {
-      const response = await apiService.login(credentials);
-      if (response.success) {
-        return response.data;
-      }
-      return rejectWithValue(response.error || 'Login failed');
+      // Use the authService from api.service.ts
+      const loginResponse = await authService.login(credentials);
+      const userProfile = await authService.getCurrentUser();
+      
+      return {
+        loginData: loginResponse,
+        user: userProfile
+      };
     } catch (error: any) {
       return rejectWithValue(error.message || 'Login failed');
     }
   }
 );
+// export const loginAsync = createAsyncThunk(
+//   'auth/login',
+//   async (credentials: LoginRequest, { rejectWithValue }) => {
+//     try {
+//       const response = await apiService.login(credentials);
+//       if (response.success) {
+//         return response.data;
+//       }
+//       return rejectWithValue(response.error || 'Login failed');
+//     } catch (error: any) {
+//       return rejectWithValue(error.message || 'Login failed');
+//     }
+//   }
+// );
 
 export const getCurrentUserAsync = createAsyncThunk(
   'auth/getCurrentUser',
@@ -184,7 +204,23 @@ const authSlice = createSlice({
       // Initialize auth
       .addCase(initializeAuthAsync.pending, (state) => {
         state.isLoading = true;
+        state.error = null;
       })
+      .addCase(loginAsync.fulfilled, (state, action) => {
+      state.isLoading = false;
+      state.isAuthenticated = true;
+      state.user = action.payload.user;
+      state.token = action.payload.loginData.accessToken;
+      state.refreshToken = action.payload.loginData.refreshToken;
+      state.error = null;
+    })
+    .addCase(loginAsync.rejected, (state, action) => {
+      state.isLoading = false;
+      state.isAuthenticated = false;
+      state.user = null;
+      state.token = null;
+      state.error = action.payload as string;
+    })
       .addCase(initializeAuthAsync.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isInitialized = true;

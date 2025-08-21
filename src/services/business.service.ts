@@ -1,8 +1,8 @@
 // src/services/business.service.ts
-// import { apiService } from './api.service';
-// import { apiService } from '.';
+
 import { BusinessUser, CreateBusinessUserRequest } from '../types/business.types';
-// import { BaseResponse } from '../types/common.types';
+import apiService from './api.service';
+
 
 export class BusinessService {
   private static instance: BusinessService;

@@ -40,22 +40,32 @@ export interface LoginResponse {
 //   totalCommissionEarned?: number;
 // }
 
+// export interface UserProfile {
+//   userId: string;
+//   email: string;
+//   firstName: string;
+//   lastName: string;
+//   fullName: string;
+//   username: string;
+//   role: string;
+//   roleDisplayName: string;
+//   isActive: boolean;
+//   emailVerified: boolean;
+//   phoneNumber?: string;
+//   territory?: string;
+//   partnerCode?: string;
+//   lastLogin?: string;
+//   createdAt?: string;
+// }
+
 export interface UserProfile {
   userId: string;
   email: string;
   firstName: string;
   lastName: string;
-  fullName: string;
-  username: string;
   role: string;
-  roleDisplayName: string;
   isActive: boolean;
   emailVerified: boolean;
-  phoneNumber?: string;
-  territory?: string;
-  partnerCode?: string;
-  lastLogin?: string;
-  createdAt?: string;
 }
 
 export interface RegistrationRequest {
@@ -261,6 +271,19 @@ export interface LoginRequest {
 //   loginTime: string;
 //}
 
+// export interface LoginResponse {
+//   accessToken: string;
+//   refreshToken: string;
+//   tokenType: string;
+//   expiresIn: number;
+//   userId: string;
+//   email: string;
+//   firstName: string;
+//   lastName: string;
+//   role: string;
+//   loginTime: string;
+// }
+
 export interface LoginResponse {
   accessToken: string;
   refreshToken: string;
@@ -273,8 +296,6 @@ export interface LoginResponse {
   role: string;
   loginTime: string;
 }
-
-
 
 export interface RefreshTokenRequest {
   refreshToken: string;

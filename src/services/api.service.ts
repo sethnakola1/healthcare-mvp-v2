@@ -1,8 +1,5 @@
 import axios, { AxiosResponse } from 'axios';
 import { LoginResponse, UserProfile } from '../types/auth.types';
-import { CreatePatientRequest } from '../types/patient.types';
-// import { CreatePatientRequest } from '../types/patient.types';
-// import { CreatePatientRequest } from '../types/patient.types';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
 
@@ -22,15 +19,6 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-export interface LoginRequest {
-  email: string;
-  password: string;
-}
-
-export interface RefreshTokenRequest {
-  refreshToken: string;
-}
-
 export interface BaseResponse<T> {
   success: boolean;
   message: string;
@@ -38,71 +26,52 @@ export interface BaseResponse<T> {
   error?: string;
 }
 
-class AuthService {
-  post<T>(arg0: string, patientData: CreatePatientRequest) {
-    throw new Error('Method not implemented.');
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+  // async put<T>(endpoint: string, data: any): Promise<BaseResponse<T>>
+  //  {
+  //   try {
+  //     const response: AxiosResponse<BaseResponse<T>> = await api.put(endpoint, data);
+  //     return response.data;
+  //   } catch (error: any) {
+  //     throw new Error(error.response?.data?.message || 'Request failed');
+  //   }
+  // }
+
+  // Generic DELETE method
+  async delete<T>(endpoint: string, data?: any): Promise<BaseResponse<T>> {
+  try {
+    const response: AxiosResponse<BaseResponse<T>> = await api.delete(endpoint, data ? { data } : undefined);
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || 'Request failed');
   }
-  get<T>(arg0: string) {
-    throw new Error('Method not implemented.');
-  }
-  put<T>(arg0: string, patientData: CreatePatientRequest) {
-    throw new Error('Method not implemented.');
-  }
-  async login(credentials: LoginRequest): Promise<LoginResponse> {
-    try {
-      const response: AxiosResponse<BaseResponse<LoginResponse>> = await api.post('/auth/login', credentials);
+}
+  // async delete<T>(endpoint: string): Promise<BaseResponse<T>> {
+  //   try {
+  //     const response: AxiosResponse<BaseResponse<T>> = await api.delete(endpoint);
+  //     return response.data;
+  //   } catch (error: any) {
+  //     throw new Error(error.response?.data?.message || 'Request failed');
+  //   }
+  // }
 
-      if (response.data.success) {
-        const loginData = response.data.data;
-
-        // Store tokens
-        localStorage.setItem('accessToken', loginData.accessToken);
-        localStorage.setItem('refreshToken', loginData.refreshToken);
-        localStorage.setItem('userId', loginData.userId);
-
-        return loginData;
-      } else {
-        throw new Error(response.data.message || 'Login failed');
-      }
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Login failed');
-    }
-  }
-
-  async getCurrentUser(): Promise<UserProfile> {
-    try {
-      const response: AxiosResponse<BaseResponse<UserProfile>> = await api.get('/auth/me');
-
-      if (response.data.success) {
-        return response.data.data;
-      } else {
-        throw new Error('Failed to get user profile');
-      }
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to get user profile');
-    }
+  // Clear client data
+  clearClientData(): void {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('userId');
   }
 
-  async refreshToken(refreshTokenRequest: RefreshTokenRequest): Promise<LoginResponse> {
-    try {
-      const response: AxiosResponse<BaseResponse<LoginResponse>> = await api.post('/auth/refresh', refreshTokenRequest);
-
-      if (response.data.success) {
-        const loginData = response.data.data;
-
-        // Update tokens
-        localStorage.setItem('accessToken', loginData.accessToken);
-        localStorage.setItem('refreshToken', loginData.refreshToken);
-
-        return loginData;
-      } else {
-        throw new Error('Token refresh failed');
-      }
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Token refresh failed');
-    }
+  // Check if authenticated
+  isAuthenticated(): boolean {
+    return !!localStorage.getItem('accessToken');
   }
 
+  // Logout
   async logout(): Promise<void> {
     try {
       await api.post('/auth/logout');
@@ -112,20 +81,8 @@ class AuthService {
       this.clearClientData();
     }
   }
-
-  clearClientData(): void {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('userId');
-  }
-
-  isAuthenticated(): boolean {
-    return !!localStorage.getItem('accessToken');
-  }
-
-  getToken(): string | null {
-    return localStorage.getItem('accessToken');
-  }
 }
 
-export default new AuthService();
+// Export single instance
+const authService = new AuthService();
+export default authService;

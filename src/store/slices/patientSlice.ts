@@ -140,7 +140,8 @@ const patientSlice = createSlice({
         if (index !== -1) {
           state.patients[index] = action.payload;
         }
-        state.currentPatient = action.payload;
+        // Ensure currentPatient is updated with the new data, creating a new object to trigger reactivity
+        state.currentPatient = { ...action.payload };
         state.isLoading = false;
       });
   },
