@@ -1,80 +1,293 @@
+// src/components/dashboard/SuperAdminDashboard.tsx
 import React from 'react';
-import { Link } from 'react-router-dom';
-import { useAppSelector } from '../../store/hooks';
+import { useSelector } from 'react-redux';
+import { selectUser } from '../../store/slices/authSlice';
 
-const SuperAdminDashboard = () => {
-  const { user, users } = useAppSelector((state) => state.auth);
-
-  // Ensure users is an array before accessing .length
-  const stats = [
-    { name: 'Total Users', value: users ? users.length : 0 },
-    { name: 'Active Sessions', value: '1' },
-    { name: 'System Status', value: 'Online' },
-  ];
-
-  const quickActions = [
-    {
-      name: 'Create User',
-      description: 'Register a new business user',
-      href: '/business/users/register',
-      icon: '👤',
-    },
-  ];
+const SuperAdminDashboard: React.FC = () => {
+  const user = useSelector(selectUser);
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white overflow-hidden shadow rounded-lg">
-        <div className="px-4 py-5 sm:p-6">
-          <h1 className="text-2xl font-bold text-gray-900">
-            Welcome back, {user?.firstName}!
-          </h1>
-          <p className="mt-1 text-sm text-gray-600">
-            Here's what's happening with your healthcare management system.
-          </p>
+    <div className="dashboard-content">
+      <div className="welcome-section">
+        <h2>Welcome back, {user?.firstName}!</h2>
+        <p>System Administrator Dashboard</p>
+      </div>
+
+      <div className="dashboard-grid">
+        <div className="dashboard-card">
+          <h3>Tech Advisors</h3>
+          <div className="metric">12</div>
+          <p>Active advisors</p>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
-        {stats.map((stat) => (
-          <div key={stat.name} className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className="flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">
-                      {stat.name}
-                    </dt>
-                    <dd className="text-2xl font-semibold text-gray-900">
-                      {stat.value}
-                    </dd>
-                  </dl>
-                </div>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+        <div className="dashboard-card">
+          <h3>Hospitals</h3>
+          <div className="metric">45</div>
+          <p>Partner hospitals</p>
+        </div>
 
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-4 py-5 sm:p-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Quick Actions</h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            {quickActions.map((action) => (
-              <Link
-                key={action.name}
-                to={action.href}
-                className="relative block p-4 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-colors"
-              >
-                <div className="text-2xl mb-2">{action.icon}</div>
-                <h3 className="text-sm font-medium text-gray-900">{action.name}</h3>
-                <p className="mt-1 text-xs text-gray-500">{action.description}</p>
-              </Link>
-            ))}
-          </div>
+        <div className="dashboard-card">
+          <h3>System Health</h3>
+          <div className="metric status-good">Healthy</div>
+          <p>All systems operational</p>
+        </div>
+
+        <div className="dashboard-card">
+          <h3>Revenue</h3>
+          <div className="metric">$125K</div>
+          <p>This month</p>
         </div>
       </div>
     </div>
   );
 };
 
-export default SuperAdminDashboard;
+// src/components/dashboard/TechAdvisorDashboard.tsx
+const TechAdvisorDashboard: React.FC = () => {
+  const user = useSelector(selectUser);
+
+  return (
+    <div className="dashboard-content">
+      <div className="welcome-section">
+        <h2>Welcome back, {user?.firstName}!</h2>
+        <p>Tech Advisor Dashboard</p>
+      </div>
+
+      <div className="dashboard-grid">
+        <div className="dashboard-card">
+          <h3>My Hospitals</h3>
+          <div className="metric">8</div>
+          <p>Partner hospitals</p>
+        </div>
+
+        <div className="dashboard-card">
+          <h3>This Month</h3>
+          <div className="metric">2</div>
+          <p>New partnerships</p>
+        </div>
+
+        <div className="dashboard-card">
+          <h3>Commission</h3>
+          <div className="metric">$8,500</div>
+          <p>This month</p>
+        </div>
+
+        <div className="dashboard-card">
+          <h3>Target</h3>
+          <div className="metric">80%</div>
+          <p>Monthly goal progress</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// src/components/dashboard/HospitalAdminDashboard.tsx
+const HospitalAdminDashboard: React.FC = () => {
+  const user = useSelector(selectUser);
+
+  return (
+    <div className="dashboard-content">
+      <div className="welcome-section">
+        <h2>Welcome back, {user?.firstName}!</h2>
+        <p>Hospital Administrator Dashboard</p>
+      </div>
+
+      <div className="dashboard-grid">
+        <div className="dashboard-card">
+          <h3>Today's Appointments</h3>
+          <div className="metric">23</div>
+          <p>Scheduled appointments</p>
+        </div>
+
+        <div className="dashboard-card">
+          <h3>Active Doctors</h3>
+          <div className="metric">12</div>
+          <p>On duty today</p>
+        </div>
+
+        <div className="dashboard-card">
+          <h3>Patient Check-ins</h3>
+          <div className="metric">18</div>
+          <p>Completed today</p>
+        </div>
+
+        <div className="dashboard-card">
+          <h3>Revenue</h3>
+          <div className="metric">$12,500</div>
+          <p>Today's earnings</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// src/components/dashboard/DoctorDashboard.tsx
+const DoctorDashboard: React.FC = () => {
+  const user = useSelector(selectUser);
+
+  return (
+    <div className="dashboard-content">
+      <div className="welcome-section">
+        <h2>Welcome back, Dr. {user?.lastName}!</h2>
+        <p>Doctor Dashboard</p>
+      </div>
+
+      <div className="dashboard-grid">
+        <div className="dashboard-card">
+          <h3>Today's Appointments</h3>
+          <div className="metric">8</div>
+          <p>Scheduled patients</p>
+        </div>
+
+        <div className="dashboard-card">
+          <h3>Pending Consultations</h3>
+          <div className="metric">3</div>
+          <p>Waiting for review</p>
+        </div>
+
+        <div className="dashboard-card">
+          <h3>Prescriptions</h3>
+          <div className="metric">15</div>
+          <p>Issued this week</p>
+        </div>
+
+        <div className="dashboard-card">
+          <h3>Next Appointment</h3>
+          <div className="metric">2:30 PM</div>
+          <p>Patient consultation</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// src/components/dashboard/NurseDashboard.tsx
+const NurseDashboard: React.FC = () => {
+  const user = useSelector(selectUser);
+
+  return (
+    <div className="dashboard-content">
+      <div className="welcome-section">
+        <h2>Welcome back, {user?.firstName}!</h2>
+        <p>Nurse Dashboard</p>
+      </div>
+
+      <div className="dashboard-grid">
+        <div className="dashboard-card">
+          <h3>Assigned Patients</h3>
+          <div className="metric">12</div>
+          <p>Under your care</p>
+        </div>
+
+        <div className="dashboard-card">
+          <h3>Vitals Pending</h3>
+          <div className="metric">5</div>
+          <p>Measurements due</p>
+        </div>
+
+        <div className="dashboard-card">
+          <h3>Medications</h3>
+          <div className="metric">8</div>
+          <p>To be administered</p>
+        </div>
+
+        <div className="dashboard-card">
+          <h3>Shift End</h3>
+          <div className="metric">6:00 PM</div>
+          <p>Time remaining</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// src/components/dashboard/ReceptionistDashboard.tsx
+const ReceptionistDashboard: React.FC = () => {
+  const user = useSelector(selectUser);
+
+  return (
+    <div className="dashboard-content">
+      <div className="welcome-section">
+        <h2>Welcome back, {user?.firstName}!</h2>
+        <p>Receptionist Dashboard</p>
+      </div>
+
+      <div className="dashboard-grid">
+        <div className="dashboard-card">
+          <h3>Check-ins Today</h3>
+          <div className="metric">34</div>
+          <p>Patients processed</p>
+        </div>
+
+        <div className="dashboard-card">
+          <h3>Waiting Queue</h3>
+          <div className="metric">7</div>
+          <p>Patients waiting</p>
+        </div>
+
+        <div className="dashboard-card">
+          <h3>Appointments</h3>
+          <div className="metric">45</div>
+          <p>Scheduled today</p>
+        </div>
+
+        <div className="dashboard-card">
+          <h3>New Registrations</h3>
+          <div className="metric">3</div>
+          <p>Today's new patients</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// src/components/dashboard/PatientDashboard.tsx
+const PatientDashboard: React.FC = () => {
+  const user = useSelector(selectUser);
+
+  return (
+    <div className="dashboard-content">
+      <div className="welcome-section">
+        <h2>Welcome back, {user?.firstName}!</h2>
+        <p>Patient Portal</p>
+      </div>
+
+      <div className="dashboard-grid">
+        <div className="dashboard-card">
+          <h3>Next Appointment</h3>
+          <div className="metric">Dec 15</div>
+          <p>Dr. Smith - 10:00 AM</p>
+        </div>
+
+        <div className="dashboard-card">
+          <h3>Prescriptions</h3>
+          <div className="metric">2</div>
+          <p>Active medications</p>
+        </div>
+
+        <div className="dashboard-card">
+          <h3>Test Results</h3>
+          <div className="metric">1</div>
+          <p>Pending review</p>
+        </div>
+
+        <div className="dashboard-card">
+          <h3>Outstanding Bill</h3>
+          <div className="metric">$250</div>
+          <p>Payment due</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export {
+  SuperAdminDashboard,
+  TechAdvisorDashboard,
+  HospitalAdminDashboard,
+  DoctorDashboard,
+  NurseDashboard,
+  ReceptionistDashboard,
+  PatientDashboard
+};

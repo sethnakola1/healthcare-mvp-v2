@@ -1,42 +1,101 @@
-import { z } from 'zod';
+// src/utils/validation.ts
+export const validateEmail = (email: string): boolean => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+};
 
-export const businessUserSchema = z.object({
-  firstName: z.string()
-    .min(1, 'First name is required')
-    .max(50, 'First name must not exceed 50 characters'),
-  lastName: z.string()
-    .min(1, 'Last name is required')
-    .max(50, 'Last name must not exceed 50 characters'),
-  email: z.string()
-    .email('Invalid email format')
-    .min(1, 'Email is required'),
-  phoneNumber: z.string()
-    .min(1, 'Phone number is required')
-    .max(20, 'Phone number must not exceed 20 characters'),
-  territory: z.string()
-    .min(1, 'Territory is required')
-    .max(100, 'Territory must not exceed 100 characters'),
-  role: z.enum(['SUPER_ADMIN', 'TECH_ADVISOR'], {
-    required_error: 'Role is required'
-  })
-});
+export const validatePassword = (password: string): {
+  isValid: boolean;
+  errors: string[]
+} => {
+  const errors: string[] = [];
 
-export const patientSchema = z.object({
-  firstName: z.string()
-    .min(1, 'First name is required')
-    .max(100, 'First name must not exceed 100 characters'),
-  lastName: z.string()
-    .min(1, 'Last name is required')
-    .max(100, 'Last name must not exceed 100 characters'),
-  email: z.string()
-    .email('Invalid email format')
-    .optional(),
-  phoneNumber: z.string()
-    .optional(),
-  gender: z.enum(['MALE', 'FEMALE', 'OTHER'], {
-    required_error: 'Gender is required'
-  }),
-});
+  if (password.length < 8) {
+    errors.push('Password must be at least 8 characters long');
+  }
+
+  if (!/[A-Z]/.test(password)) {
+    errors.push('Password must contain at least one uppercase letter');
+  }
+
+  if (!/[a-z]/.test(password)) {
+    errors.push('Password must contain at least one lowercase letter');
+  }
+
+  if (!/\d/.test(password)) {
+    errors.push('Password must contain at least one number');
+  }
+
+  if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+    errors.push('Password must contain at least one special character');
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+  };
+};
+
+export const formatError = (error: any): string => {
+  if (typeof error === 'string') {
+    return error;
+  }
+
+  if (error?.message) {
+    return error.message;
+  }
+
+  if (error?.response?.data?.message) {
+    return error.response.data.message;
+  }
+
+  if (error?.response?.data?.error) {
+    return error.response.data.error;
+  }
+
+  return 'An unexpected error occurred';
+};
+
+
+// import { z } from 'zod';
+//
+// export const businessUserSchema = z.object({
+//   firstName: z.string()
+//     .min(1, 'First name is required')
+//     .max(50, 'First name must not exceed 50 characters'),
+//   lastName: z.string()
+//     .min(1, 'Last name is required')
+//     .max(50, 'Last name must not exceed 50 characters'),
+//   email: z.string()
+//     .email('Invalid email format')
+//     .min(1, 'Email is required'),
+//   phoneNumber: z.string()
+//     .min(1, 'Phone number is required')
+//     .max(20, 'Phone number must not exceed 20 characters'),
+//   territory: z.string()
+//     .min(1, 'Territory is required')
+//     .max(100, 'Territory must not exceed 100 characters'),
+//   role: z.enum(['SUPER_ADMIN', 'TECH_ADVISOR'], {
+//     required_error: 'Role is required'
+//   })
+// });
+//
+// export const patientSchema = z.object({
+//   firstName: z.string()
+//     .min(1, 'First name is required')
+//     .max(100, 'First name must not exceed 100 characters'),
+//   lastName: z.string()
+//     .min(1, 'Last name is required')
+//     .max(100, 'Last name must not exceed 100 characters'),
+//   email: z.string()
+//     .email('Invalid email format')
+//     .optional(),
+//   phoneNumber: z.string()
+//     .optional(),
+//   gender: z.enum(['MALE', 'FEMALE', 'OTHER'], {
+//     required_error: 'Gender is required'
+//   }),
+// });
 
 
 

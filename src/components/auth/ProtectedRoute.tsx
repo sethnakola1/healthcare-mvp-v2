@@ -1,44 +1,25 @@
-// src/components/common/ProtectedRoute.tsx
+// src/components/auth/ProtectedRoute.tsx
 import React from 'react';
+import { useSelector } from 'react-redux';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth';
-import { LoadingSpinner } from '../common';
-// import LoadingSpinner from './LoadingSpinner';
+import { selectIsAuthenticated, selectIsLoading } from '../../store/slices/authSlice';
+import LoadingSpinner from '../common/LoadingSpinner';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRole?: string | string[];
-  fallbackPath?: string;
 }
 
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
-  children,
-  requiredRole,
-  fallbackPath = '/login'
-}) => {
-  const { isAuthenticated, user, isInitialized, isLoading } = useAuth();
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
+  const isAuthenticated = useSelector(selectIsAuthenticated);
+  const isLoading = useSelector(selectIsLoading);
   const location = useLocation();
 
-  // Show loading while initializing auth
-  if (!isInitialized || isLoading) {
-    return <LoadingSpinner />;
+  if (isLoading) {
+    return <LoadingSpinner message="Authenticating..." />;
   }
 
-  // Redirect to login if not authenticated
   if (!isAuthenticated) {
-    return <Navigate to={fallbackPath} state={{ from: location }} replace />;
-  }
-
-  // Check role-based access
-  if (requiredRole && user) {
-    const userRole = user.role;
-    const hasRequiredRole = Array.isArray(requiredRole)
-      ? requiredRole.includes(userRole)
-      : userRole === requiredRole;
-
-    if (!hasRequiredRole) {
-      return <Navigate to="/unauthorized" replace />;
-    }
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   return <>{children}</>;

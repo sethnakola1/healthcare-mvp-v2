@@ -1,138 +1,123 @@
-import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
-import {  User } from '../../types/auth.types';
-import {apiService, authService } from '../../services/api.service';
+// src/store/slices/authSlice.ts
 
-export interface AuthState {
-  user: User | null;
-  users: User[] | null; // Assuming you want to track multiple users
-  token: string | null;
-  accessToken: string | null;
-  refreshToken: string | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  loading: boolean;
-  error: string | null;
-  loginAttempts: number;
-  lastLoginAttempt: number | null;
-  isInitialized: boolean;
-}
+import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { authService } from '../../services/api.service';
+import {
+  AuthState,
+  LoginRequest,
+  LoginResponse,
+  UserProfile,
+  RefreshTokenRequest,
+  ChangePasswordRequest
+} from '../../types/auth.types';
 
 // Initial state
 const initialState: AuthState = {
   user: null,
-  users: null,
   token: null,
+  refreshToken: null,
   isAuthenticated: false,
   isLoading: false,
   error: null,
-  accessToken: localStorage.getItem('accessToken'),
-  refreshToken: localStorage.getItem('refreshToken'),
-  loginAttempts: 0,
-  lastLoginAttempt: null,
-  isInitialized: false,
-  loading: false
+  sessionExpiry: null,
 };
 
 // Async thunks
-export const loginAsync = createAsyncThunk(
+export const loginUser = createAsyncThunk(
   'auth/login',
-  async (
-    credentials: { email: string; password: string },
-    { rejectWithValue }
-  ) => {
+  async (credentials: LoginRequest, { rejectWithValue }) => {
     try {
-      // Use the authService from api.service.ts
-      const loginResponse = await authService.login(credentials);
-      const userProfile = await authService.getCurrentUser();
+      const response = await authService.login(credentials);
       
-      return {
-        loginData: loginResponse,
-        user: userProfile
-      };
+      if (!response.data.success) {
+        return rejectWithValue(response.data.message || 'Login failed');
+      }
+
+      return response.data.data;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Login failed');
     }
   }
 );
-// export const loginAsync = createAsyncThunk(
-//   'auth/login',
-//   async (credentials: LoginRequest, { rejectWithValue }) => {
-//     try {
-//       const response = await apiService.login(credentials);
-//       if (response.success) {
-//         return response.data;
-//       }
-//       return rejectWithValue(response.error || 'Login failed');
-//     } catch (error: any) {
-//       return rejectWithValue(error.message || 'Login failed');
-//     }
-//   }
-// );
 
-export const getCurrentUserAsync = createAsyncThunk(
+export const getCurrentUser = createAsyncThunk(
   'auth/getCurrentUser',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await apiService.getCurrentUser();
-      if (response.success) {
-        return response.data;
+      const response = await authService.getCurrentUser();
+
+      if (!response.data.success) {
+        return rejectWithValue(response.data.message || 'Failed to get user data');
       }
-      return rejectWithValue(response.error || 'Failed to get user data');
+
+      return response.data.data;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to get user data');
     }
   }
 );
 
-export const logoutAsync = createAsyncThunk(
-  'auth/logout',
-  async (_, { rejectWithValue }) => {
+export const refreshUserToken = createAsyncThunk(
+  'auth/refreshToken',
+  async (request: RefreshTokenRequest, { rejectWithValue }) => {
     try {
-      await apiService.logout();
-      return;
+      const response = await authService.refreshToken(request);
+
+      if (!response.data.success) {
+        return rejectWithValue(response.data.message || 'Token refresh failed');
+      }
+
+      return response.data.data;
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Logout failed');
+      return rejectWithValue(error.message || 'Token refresh failed');
     }
   }
 );
 
-export const changePasswordAsync = createAsyncThunk(
-  'auth/changePassword',
-  async ({ currentPassword, newPassword }: { currentPassword: string; newPassword: string }, { rejectWithValue }) => {
+export const logoutUser = createAsyncThunk(
+  'auth/logout',
+  async (_, { rejectWithValue }) => {
     try {
-      const response = await apiService.changePassword(currentPassword, newPassword);
-      if (response.success) {
-        return response.data;
+      await authService.logout();
+      return true;
+    } catch (error: any) {
+      // Even if logout fails on server, we should clear local state
+      return true;
+    }
+  }
+);
+
+export const changeUserPassword = createAsyncThunk(
+  'auth/changePassword',
+  async (request: ChangePasswordRequest, { rejectWithValue }) => {
+    try {
+      const response = await authService.changePassword(request);
+
+      if (!response.data.success) {
+        return rejectWithValue(response.data.message || 'Password change failed');
       }
-      return rejectWithValue(response.error || 'Password change failed');
+
+      return response.data.message;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Password change failed');
     }
   }
 );
 
-export const initializeAuthAsync = createAsyncThunk(
-  'auth/initialize',
-  async (_, { dispatch, getState }) => {
-    const token = localStorage.getItem('accessToken');
-    const userData = localStorage.getItem('user');
+export const validateAuthToken = createAsyncThunk(
+  'auth/validateToken',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await authService.validateToken();
 
-    if (token && userData) {
-      try {
-        const user = JSON.parse(userData);
-        // Verify token is still valid by fetching current user
-        await dispatch(getCurrentUserAsync()).unwrap();
-        return { user, token };
-      } catch (error) {
-        // Token is invalid, clear storage
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('user');
-        throw error;
+      if (!response.data.success) {
+        return rejectWithValue('Token validation failed');
       }
-    }
 
-    return null;
+      return response.data.data;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Token validation failed');
+    }
   }
 );
 
@@ -141,199 +126,216 @@ const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
-    loginStart: (state) => {
-      state.loading = true;
-      state.error = null;
-    },
-    loginSuccess: (state, action: PayloadAction<{ user: User; token: string }>) => {
-      state.loading = false;
-      state.user = action.payload.user;
-      state.token = action.payload.token;
-      state.isAuthenticated = true;
-      state.error = null;
-    },
-    loginFailure: (state, action: PayloadAction<string>) => {
-      state.loading = false;
-      state.error = action.payload;
-      state.isAuthenticated = false;
-    },
-    logout: (state) => {
-      state.user = null;
-      state.token = null;
-      state.isAuthenticated = false;
-      state.error = null;
-    },
     clearError: (state) => {
       state.error = null;
     },
-    resetAuthState: (state) => {
-      return {
-        ...initialState,
-        accessToken: null,
-        refreshToken: null,
-        isInitialized: true,
-      };
-    },
-    updateTokens: (state, action: PayloadAction<{ accessToken: string; refreshToken?: string }>) => {
-      state.accessToken = action.payload.accessToken;
-      if (action.payload.refreshToken) {
-        state.refreshToken = action.payload.refreshToken;
-      }
-      localStorage.setItem('accessToken', action.payload.accessToken);
-      if (action.payload.refreshToken) {
-        localStorage.setItem('refreshToken', action.payload.refreshToken);
-      }
-    },
-    incrementLoginAttempts: (state) => {
-      state.loginAttempts += 1;
-      state.lastLoginAttempt = Date.now();
-    },
-    resetLoginAttempts: (state) => {
-      state.loginAttempts = 0;
-      state.lastLoginAttempt = null;
-    },
-    updateUser: (state, action: PayloadAction<Partial<User>>) => {
-      if (state.user) {
-        state.user = { ...state.user, ...action.payload };
-        localStorage.setItem('user', JSON.stringify(state.user));
-      }
-    },
-  },
-  extraReducers: (builder) => {
-    builder
-      // Initialize auth
-      .addCase(initializeAuthAsync.pending, (state) => {
-        state.isLoading = true;
-        state.error = null;
-      })
-      .addCase(loginAsync.fulfilled, (state, action) => {
-      state.isLoading = false;
-      state.isAuthenticated = true;
-      state.user = action.payload.user;
-      state.token = action.payload.loginData.accessToken;
-      state.refreshToken = action.payload.loginData.refreshToken;
-      state.error = null;
-    })
-    .addCase(loginAsync.rejected, (state, action) => {
-      state.isLoading = false;
-      state.isAuthenticated = false;
+
+    clearAuth: (state) => {
       state.user = null;
       state.token = null;
-      state.error = action.payload as string;
-    })
-      .addCase(initializeAuthAsync.fulfilled, (state, action) => {
-        state.isLoading = false;
-        state.isInitialized = true;
-        if (action.payload) {
-          state.user = action.payload.user;
-          state.accessToken = action.payload.token;
-          state.isAuthenticated = true;
+      state.refreshToken = null;
+      state.isAuthenticated = false;
+      state.error = null;
+      state.sessionExpiry = null;
+      state.isLoading = false;
+
+      // Clear localStorage
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('user');
+      localStorage.removeItem('sessionExpiry');
+    },
+
+    restoreAuthFromStorage: (state) => {
+      try {
+        const token = localStorage.getItem('accessToken');
+        const refreshToken = localStorage.getItem('refreshToken');
+        const userStr = localStorage.getItem('user');
+        const sessionExpiry = localStorage.getItem('sessionExpiry');
+
+        if (token && userStr && sessionExpiry) {
+          const expiryTime = parseInt(sessionExpiry, 10);
+          const currentTime = Date.now();
+
+          // Check if token is still valid
+          if (currentTime < expiryTime) {
+            state.token = token;
+            state.refreshToken = refreshToken;
+            state.user = JSON.parse(userStr);
+            state.isAuthenticated = true;
+            state.sessionExpiry = expiryTime;
+          } else {
+            // Token expired, clear everything
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('refreshToken');
+            localStorage.removeItem('user');
+            localStorage.removeItem('sessionExpiry');
+          }
         }
-      })
-      .addCase(initializeAuthAsync.rejected, (state) => {
-        state.isLoading = false;
-        state.isInitialized = true;
-        state.isAuthenticated = false;
-      })
-      // Login
-      .addCase(loginAsync.pending, (state) => {
+      } catch (error) {
+        console.error('Error restoring auth from storage:', error);
+        // Clear corrupted data
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('user');
+        localStorage.removeItem('sessionExpiry');
+      }
+    },
+
+    updateSessionExpiry: (state, action: PayloadAction<number>) => {
+      state.sessionExpiry = action.payload;
+      localStorage.setItem('sessionExpiry', action.payload.toString());
+    },
+  },
+
+  extraReducers: (builder) => {
+    // Login user
+    builder
+      .addCase(loginUser.pending, (state) => {
         state.isLoading = true;
         state.error = null;
       })
-      .addCase(loginAsync.fulfilled, (state, action) => {
+      .addCase(loginUser.fulfilled, (state, action: PayloadAction<LoginResponse>) => {
         state.isLoading = false;
         state.isAuthenticated = true;
-        state.accessToken = action.payload.accessToken;
+        state.token = action.payload.accessToken;
         state.refreshToken = action.payload.refreshToken;
 
-        // Extract user data from login response
+        // Create user profile from login response
         state.user = {
           userId: action.payload.userId,
           email: action.payload.email,
           firstName: action.payload.firstName,
           lastName: action.payload.lastName,
-          fullName: `${action.payload.firstName} ${action.payload.lastName}`,
-          username: action.payload.email, // Use email as username fallback
           role: action.payload.role,
-          roleDisplayName: action.payload.role.replace('_', ' '),
           isActive: true,
           emailVerified: true,
         };
 
-        state.loginAttempts = 0;
-        state.lastLoginAttempt = null;
+        // Calculate session expiry
+        const expiryTime = Date.now() + (action.payload.expiresIn * 1000);
+        state.sessionExpiry = expiryTime;
+
         state.error = null;
       })
-      .addCase(loginAsync.rejected, (state, action) => {
+      .addCase(loginUser.rejected, (state, action) => {
         state.isLoading = false;
         state.isAuthenticated = false;
         state.user = null;
-        state.accessToken = null;
+        state.token = null;
         state.refreshToken = null;
+        state.sessionExpiry = null;
         state.error = action.payload as string;
-        state.loginAttempts += 1;
-        state.lastLoginAttempt = Date.now();
+      });
+
+    // Get current user
+    builder
+      .addCase(getCurrentUser.pending, (state) => {
+        state.isLoading = true;
       })
-      // Get current user
-      .addCase(getCurrentUserAsync.fulfilled, (state, action) => {
-        state.user = {
-          ...state.user,
-          ...action.payload,
-          fullName: `${action.payload.firstName} ${action.payload.lastName}`,
-        };
-        state.isAuthenticated = true;
-        localStorage.setItem('user', JSON.stringify(state.user));
+      .addCase(getCurrentUser.fulfilled, (state, action: PayloadAction<UserProfile>) => {
+        state.isLoading = false;
+        state.user = action.payload;
+        state.error = null;
       })
-      .addCase(getCurrentUserAsync.rejected, (state) => {
+      .addCase(getCurrentUser.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
+      });
+
+    // Refresh token
+    builder
+      .addCase(refreshUserToken.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(refreshUserToken.fulfilled, (state, action: PayloadAction<LoginResponse>) => {
+        state.isLoading = false;
+        state.token = action.payload.accessToken;
+        state.refreshToken = action.payload.refreshToken;
+
+        // Update session expiry
+        const expiryTime = Date.now() + (action.payload.expiresIn * 1000);
+        state.sessionExpiry = expiryTime;
+
+        state.error = null;
+      })
+      .addCase(refreshUserToken.rejected, (state, action) => {
+        state.isLoading = false;
         state.isAuthenticated = false;
         state.user = null;
-        state.accessToken = null;
+        state.token = null;
         state.refreshToken = null;
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('user');
-      })
-      // Logout
-      .addCase(logoutAsync.pending, (state) => {
+        state.sessionExpiry = null;
+        state.error = action.payload as string;
+      });
+
+    // Logout user
+    builder
+      .addCase(logoutUser.pending, (state) => {
         state.isLoading = true;
       })
-      .addCase(logoutAsync.fulfilled, (state) => {
-        return {
-          ...initialState,
-          isInitialized: true,
-        };
+      .addCase(logoutUser.fulfilled, (state) => {
+        state.isLoading = false;
+        state.isAuthenticated = false;
+        state.user = null;
+        state.token = null;
+        state.refreshToken = null;
+        state.sessionExpiry = null;
+        state.error = null;
       })
-      .addCase(logoutAsync.rejected, (state) => {
-        // Even if logout fails on server, clear local state
-        return {
-          ...initialState,
-          isInitialized: true,
-        };
-      })
-      // Change password
-      .addCase(changePasswordAsync.pending, (state) => {
+      .addCase(logoutUser.rejected, (state) => {
+        // Even if logout fails, clear local state
+        state.isLoading = false;
+        state.isAuthenticated = false;
+        state.user = null;
+        state.token = null;
+        state.refreshToken = null;
+        state.sessionExpiry = null;
+        state.error = null;
+      });
+
+    // Change password
+    builder
+      .addCase(changeUserPassword.pending, (state) => {
         state.isLoading = true;
         state.error = null;
       })
-      .addCase(changePasswordAsync.fulfilled, (state) => {
+      .addCase(changeUserPassword.fulfilled, (state) => {
         state.isLoading = false;
         state.error = null;
       })
-      .addCase(changePasswordAsync.rejected, (state, action) => {
+      .addCase(changeUserPassword.rejected, (state, action) => {
         state.isLoading = false;
+        state.error = action.payload as string;
+      });
+
+    // Validate token
+    builder
+      .addCase(validateAuthToken.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(validateAuthToken.fulfilled, (state) => {
+        state.isLoading = false;
+        state.error = null;
+      })
+      .addCase(validateAuthToken.rejected, (state, action) => {
+        state.isLoading = false;
+        state.isAuthenticated = false;
+        state.user = null;
+        state.token = null;
+        state.refreshToken = null;
+        state.sessionExpiry = null;
         state.error = action.payload as string;
       });
   },
 });
 
-// Actions
+// Export actions
 export const {
-  // clearError,
-  resetAuthState,
-  updateTokens,
-  incrementLoginAttempts,
-  resetLoginAttempts,
-  updateUser,
+  clearError,
+  clearAuth,
+  restoreAuthFromStorage,
+  updateSessionExpiry
 } = authSlice.actions;
 
 // Selectors
@@ -342,40 +344,14 @@ export const selectUser = (state: { auth: AuthState }) => state.auth.user;
 export const selectIsAuthenticated = (state: { auth: AuthState }) => state.auth.isAuthenticated;
 export const selectIsLoading = (state: { auth: AuthState }) => state.auth.isLoading;
 export const selectError = (state: { auth: AuthState }) => state.auth.error;
-export const selectUserRole = (state: { auth: AuthState }) => state.auth.user?.role;
-export const selectIsInitialized = (state: { auth: AuthState }) => state.auth.isInitialized;
+export const selectToken = (state: { auth: AuthState }) => state.auth.token;
 
 // Helper selectors
-export const selectCanCreateBusinessUser = (state: { auth: AuthState }) => {
-  const role = state.auth.user?.role;
-  return role === 'SUPER_ADMIN';
+export const selectUserRole = (state: { auth: AuthState }) => state.auth.user?.role;
+export const selectUserFullName = (state: { auth: AuthState }) => {
+  const user = state.auth.user;
+  return user ? `${user.firstName} ${user.lastName}` : '';
 };
 
-export const selectCanCreateHospital = (state: { auth: AuthState }) => {
-  const role = state.auth.user?.role;
-  return role === 'SUPER_ADMIN' || role === 'TECH_ADVISOR';
-};
-
-export const selectCanCreateHospitalUser = (state: { auth: AuthState }) => {
-  const role = state.auth.user?.role;
-  return role === 'HOSPITAL_ADMIN';
-};
-
-export const selectCanManagePatients = (state: { auth: AuthState }) => {
-  const role = state.auth.user?.role;
-  return ['HOSPITAL_ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST'].includes(role || '');
-};
-
-// Rate limiting selector
-export const selectIsRateLimited = (state: { auth: AuthState }) => {
-  const { loginAttempts, lastLoginAttempt } = state.auth;
-  if (loginAttempts >= 5 && lastLoginAttempt) {
-    const timeSinceLastAttempt = Date.now() - lastLoginAttempt;
-    const lockoutTime = 15 * 60 * 1000; // 15 minutes
-    return timeSinceLastAttempt < lockoutTime;
-  }
-  return false;
-};
-
-export const { loginStart, loginSuccess, loginFailure, logout, clearError } = authSlice.actions;
+// Export reducer
 export default authSlice.reducer;

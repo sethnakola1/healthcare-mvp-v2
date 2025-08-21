@@ -1,156 +1,244 @@
-import React, { useState } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+// src/components/auth/LoginPage.tsx
+
+import React, { useState, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { AppDispatch } from '../../store/store';
+import {
+  loginUser,
+  clearError,
+  selectAuth,
+  selectIsAuthenticated,
+  selectIsLoading,
+  selectError
+} from '../../store/slices/authSlice';
+import { LoginRequest } from '../../types/auth.types';
+import './LoginPage.css';
 
 const LoginPage: React.FC = () => {
-  const [email, setEmail] = useState('sethnakola@healthhorizon.com');
-  const [password, setPassword] = useState('SuperAdmin123!');
-  const [localError, setLocalError] = useState<string | null>(null);
+  const dispatch = useDispatch<AppDispatch>();
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  const { user, isAuthenticated, isLoading, error, login } = useAuth();
+  const isAuthenticated = useSelector(selectIsAuthenticated);
+  const isLoading = useSelector(selectIsLoading);
+  const error = useSelector(selectError);
+
+  const [formData, setFormData] = useState<LoginRequest>({
+    email: '',
+    password: ''
+  });
+
+  const [formErrors, setFormErrors] = useState<{
+    email?: string;
+    password?: string;
+  }>({});
+
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Clear errors when component mounts
+  useEffect(() => {
+    dispatch(clearError());
+  }, [dispatch]);
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      const from = (location.state as any)?.from?.pathname || '/dashboard';
+      navigate(from, { replace: true });
+    }
+  }, [isAuthenticated, navigate, location]);
+
+  const validateForm = (): boolean => {
+    const errors: { email?: string; password?: string } = {};
+
+    // Email validation
+    if (!formData.email) {
+      errors.email = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      errors.email = 'Please enter a valid email address';
+    }
+
+    // Password validation
+    if (!formData.password) {
+      errors.password = 'Password is required';
+    } else if (formData.password.length < 6) {
+      errors.password = 'Password must be at least 6 characters';
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+
+    // Clear field error when user starts typing
+    if (formErrors[name as keyof typeof formErrors]) {
+      setFormErrors(prev => ({
+        ...prev,
+        [name]: undefined
+      }));
+    }
+
+    // Clear general error
+    if (error) {
+      dispatch(clearError());
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLocalError(null);
 
-    if (!email || !password) {
-      setLocalError('Please enter both email and password');
+    if (!validateForm()) {
       return;
     }
 
     try {
-      await login(email, password);
-      console.log('Login successful!');
-    } catch (err: any) {
-      setLocalError(err.message || 'Login failed');
+      await dispatch(loginUser(formData)).unwrap();
+      // Navigation will be handled by useEffect when isAuthenticated changes
+    } catch (err) {
+      // Error is handled by Redux store
+      console.error('Login failed:', err);
     }
   };
 
-  // Show success message if logged in
-  if (isAuthenticated && user) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#f0f8ff'
-      }}>
-        <div style={{
-          backgroundColor: 'white',
-          padding: '2rem',
-          borderRadius: '8px',
-          boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-          textAlign: 'center'
-        }}>
-          <h2 style={{ color: '#28a745', marginBottom: '1rem' }}>Login Successful!</h2>
-          <p>Welcome back, <strong>{user.firstName || user.email}</strong></p>
-          <p>Role: <strong>{user.role}</strong></p>
-          <p style={{ fontSize: '14px', color: '#666', marginTop: '1rem' }}>
-            You can now navigate to your dashboard or other features.
-          </p>
-        </div>
-      </div>
-    );
-  }
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: '#f5f5f5'
-    }}>
-      <div style={{
-        backgroundColor: 'white',
-        padding: '2rem',
-        borderRadius: '8px',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-        width: '100%',
-        maxWidth: '400px'
-      }}>
-        <h2 style={{ textAlign: 'center', marginBottom: '2rem', color: '#333' }}>
-          Healthcare MVP Login
-        </h2>
-
-        {(localError || error) && (
-          <div style={{
-            backgroundColor: '#fee',
-            color: '#c33',
-            padding: '0.75rem',
-            borderRadius: '4px',
-            marginBottom: '1rem',
-            border: '1px solid #fcc'
-          }}>
-            {localError || error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
-              Email:
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              disabled={isLoading}
-              style={{
-                width: '100%',
-                padding: '0.75rem',
-                border: '1px solid #ddd',
-                borderRadius: '4px',
-                fontSize: '16px'
+    <div className="login-container">
+      <div className="login-card">
+        <div className="login-header">
+          <div className="logo-container">
+            <img
+              src="/logo.png"
+              alt="Healthcare MVP"
+              className="logo"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
               }}
-              placeholder="Enter your email"
             />
           </div>
+          <h1 className="login-title">Welcome Back</h1>
+          <p className="login-subtitle">Sign in to your account</p>
+        </div>
 
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
-              Password:
+        <form onSubmit={handleSubmit} className="login-form">
+          {error && (
+            <div className="error-banner">
+              <div className="error-content">
+                <span className="error-icon">⚠️</span>
+                <span className="error-message">{error}</span>
+                <button
+                  type="button"
+                  className="error-close"
+                  onClick={() => dispatch(clearError())}
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="form-group">
+            <label htmlFor="email" className="form-label">
+              Email Address
             </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={isLoading}
-              style={{
-                width: '100%',
-                padding: '0.75rem',
-                border: '1px solid #ddd',
-                borderRadius: '4px',
-                fontSize: '16px'
-              }}
-              placeholder="Enter your password"
-            />
+            <div className="input-container">
+              <input
+                type="email"
+                id="email"
+                name="email"
+                value={formData.email}
+                onChange={handleInputChange}
+                className={`form-input ${formErrors.email ? 'input-error' : ''}`}
+                placeholder="Enter your email"
+                disabled={isLoading}
+                autoComplete="email"
+                autoFocus
+              />
+              <span className="input-icon">📧</span>
+            </div>
+            {formErrors.email && (
+              <span className="field-error">{formErrors.email}</span>
+            )}
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="password" className="form-label">
+              Password
+            </label>
+            <div className="input-container">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                id="password"
+                name="password"
+                value={formData.password}
+                onChange={handleInputChange}
+                className={`form-input ${formErrors.password ? 'input-error' : ''}`}
+                placeholder="Enter your password"
+                disabled={isLoading}
+                autoComplete="current-password"
+              />
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={togglePasswordVisibility}
+                tabIndex={-1}
+              >
+                {showPassword ? '🙈' : '👁️'}
+              </button>
+            </div>
+            {formErrors.password && (
+              <span className="field-error">{formErrors.password}</span>
+            )}
+          </div>
+
+          <div className="form-options">
+            <label className="checkbox-container">
+              <input type="checkbox" />
+              <span className="checkmark"></span>
+              Remember me
+            </label>
+            <a href="/forgot-password" className="forgot-link">
+              Forgot password?
+            </a>
           </div>
 
           <button
             type="submit"
+            className={`login-button ${isLoading ? 'loading' : ''}`}
             disabled={isLoading}
-            style={{
-              width: '100%',
-              padding: '0.75rem',
-              backgroundColor: isLoading ? '#ccc' : '#007bff',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              cursor: isLoading ? 'not-allowed' : 'pointer'
-            }}
           >
-            {isLoading ? 'Logging in...' : 'Login'}
+            {isLoading ? (
+              <>
+                <span className="spinner"></span>
+                Signing in...
+              </>
+            ) : (
+              'Sign In'
+            )}
           </button>
         </form>
 
-        <div style={{ marginTop: '1rem', fontSize: '14px', color: '#666', textAlign: 'center' }}>
-          <p><strong>Test Credentials:</strong></p>
-          <p>Email: sethnakola@healthhorizon.com</p>
-          <p>Password: SuperAdmin123!</p>
+        <div className="login-footer">
+          <p className="register-prompt">
+            Don't have an account?{' '}
+            <a href="/register" className="register-link">
+              Contact your administrator
+            </a>
+          </p>
         </div>
+      </div>
+
+      <div className="login-background">
+        <div className="background-pattern"></div>
       </div>
     </div>
   );
