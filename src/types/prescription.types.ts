@@ -8,7 +8,7 @@ export interface PrescriptionDto {
   medicalRecordId?: string;
   prescriptionDate: string;
   prescriptionNumber: string;
-  medications: string; // JSON string
+  medications: string;
   generalInstructions?: string;
   dietaryInstructions?: string;
   followUpDate?: string;
@@ -16,12 +16,14 @@ export interface PrescriptionDto {
   pdfFilePath?: string;
   pdfGeneratedAt?: string;
   status: string;
-  createdAt: string;
-  createdBy: string;
-  updatedAt: string;
-  updatedBy: string;
+  dosage?: string;
   fhirResourceId?: string;
   isActive: boolean;
+  medication: string;
+  createdAt: string;
+  createdBy?: string;
+  updatedAt: string;
+  updatedBy?: string;
 }
 
 export interface CreatePrescriptionRequest {
@@ -39,5 +41,5 @@ export interface MedicationDto {
   dosage: string;
   frequency: string;
   durationDays: number;
-  route: string; // ORAL, IV, TOPICAL, etc.
+  route: string;
 }

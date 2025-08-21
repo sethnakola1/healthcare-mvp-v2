@@ -1,63 +1,75 @@
 // src/services/appointment.service.ts
-import { apiService } from './api.service';
-import { AppointmentDto, CreateAppointmentRequest } from '../types/appointment.types';
-import { ApiResponse } from '../types/api.types';
+import apiService, { ApiResponse } from './api.service';
+
+// Define types
+export interface AppointmentDto {
+  appointmentId: string;
+  hospitalId: string;
+  patientId: string;
+  doctorId: string;
+  appointmentDateTime: string;
+  status: string;
+  // Add other properties as needed
+}
+
+export interface CreateAppointmentRequest {
+  hospitalId: string;
+  patientId: string;
+  doctorId: string;
+  appointmentDateTime: string;
+  durationMinutes?: number;
+  appointmentType?: string;
+  chiefComplaint?: string;
+  notes?: string;
+  isVirtual?: boolean;
+  meetingLink?: string;
+  isEmergency?: boolean;
+  followUpRequired?: boolean;
+  followUpDate?: string;
+}
 
 class AppointmentService {
-  // Book new appointment
-  async bookAppointment(request: CreateAppointmentRequest): Promise<ApiResponse<AppointmentDto>> {
-    return apiService.post<AppointmentDto>('/api/appointments', request);
+  async createAppointment(request: CreateAppointmentRequest): Promise<ApiResponse<AppointmentDto>> {
+    return apiService.post<ApiResponse<AppointmentDto>>('/appointments', request);
   }
 
-  // Get hospital appointments
   async getHospitalAppointments(hospitalId: string): Promise<ApiResponse<AppointmentDto[]>> {
-    return apiService.get<AppointmentDto[]>(`/api/appointments/hospital/${hospitalId}`);
+    return apiService.get<ApiResponse<AppointmentDto[]>>(`/appointments/hospital/${hospitalId}`);
   }
 
-  // Get doctor appointments
   async getDoctorAppointments(doctorId: string): Promise<ApiResponse<AppointmentDto[]>> {
-    return apiService.get<AppointmentDto[]>(`/api/appointments/doctor/${doctorId}`);
+    return apiService.get<ApiResponse<AppointmentDto[]>>(`/appointments/doctor/${doctorId}`);
   }
 
-  // Get patient appointments
   async getPatientAppointments(patientId: string): Promise<ApiResponse<AppointmentDto[]>> {
-    return apiService.get<AppointmentDto[]>(`/api/appointments/patient/${patientId}`);
+    return apiService.get<ApiResponse<AppointmentDto[]>>(`/appointments/patient/${patientId}`);
   }
 
-  // Get today's appointments for hospital
-  async getTodaysHospitalAppointments(hospitalId: string): Promise<ApiResponse<AppointmentDto[]>> {
-    return apiService.get<AppointmentDto[]>(`/api/appointments/hospital/${hospitalId}/today`);
-  }
-
-  // Get today's appointments for doctor
-  async getTodaysDoctorAppointments(doctorId: string): Promise<ApiResponse<AppointmentDto[]>> {
-    return apiService.get<AppointmentDto[]>(`/api/appointments/doctor/${doctorId}/today`);
-  }
-
-  // Get today's appointments for patient
-  async getTodaysPatientAppointments(patientId: string): Promise<ApiResponse<AppointmentDto[]>> {
-    return apiService.get<AppointmentDto[]>(`/api/appointments/patient/${patientId}/today`);
-  }
-
-  // Update appointment status
-  async updateAppointmentStatus(
-    appointmentId: string,
-    status: string,
-    reason?: string
-  ): Promise<ApiResponse<AppointmentDto>> {
+  async updateAppointmentStatus(appointmentId: string, status: string, reason?: string): Promise<ApiResponse<AppointmentDto>> {
     const params = new URLSearchParams({ status });
     if (reason) params.append('reason', reason);
 
-    return apiService.put<AppointmentDto>(
-      `/api/appointments/${appointmentId}/status?${params.toString()}`
-    );
+    return apiService.put<ApiResponse<AppointmentDto>>(`/appointments/${appointmentId}/status?${params}`);
   }
 
-  // Cancel appointment
   async cancelAppointment(appointmentId: string, reason: string): Promise<ApiResponse<string>> {
     const params = new URLSearchParams({ reason });
-    return apiService.delete<string>(`/api/appointments/${appointmentId}?${params.toString()}`);
+    return apiService.delete<ApiResponse<string>>(`/appointments/${appointmentId}?${params}`);
+  }
+
+  async getTodaysPatientAppointments(patientId: string): Promise<ApiResponse<AppointmentDto[]>> {
+    return apiService.get<ApiResponse<AppointmentDto[]>>(`/appointments/patient/${patientId}/today`);
+  }
+
+  async getTodaysHospitalAppointments(hospitalId: string): Promise<ApiResponse<AppointmentDto[]>> {
+    return apiService.get<ApiResponse<AppointmentDto[]>>(`/appointments/hospital/${hospitalId}/today`);
+  }
+
+  async getTodaysDoctorAppointments(doctorId: string): Promise<ApiResponse<AppointmentDto[]>> {
+    return apiService.get<ApiResponse<AppointmentDto[]>>(`/appointments/doctor/${doctorId}/today`);
   }
 }
 
-export const appointmentService = new AppointmentService();
+const appointmentService = new AppointmentService();
+export default appointmentService;
+export { appointmentService };

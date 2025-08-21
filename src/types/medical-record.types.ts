@@ -2,15 +2,13 @@
 export interface MedicalRecordDto {
   medicalRecordId: string;
   patientId: string;
-  patientName: string;
+  patientName?: string;
   doctorId: string;
-  doctorName: string;
+  doctorName?: string;
   hospitalId: string;
-  hospitalName: string;
+  hospitalName?: string;
   appointmentId?: string;
   recordDate: string;
-
-  // Medical Assessment
   chiefComplaint: string;
   presentIllness?: string;
   physicalExamination?: string;
@@ -18,15 +16,9 @@ export interface MedicalRecordDto {
   differentialDiagnosis?: string;
   treatmentPlan?: string;
   followUpInstructions?: string;
-
-  // Vitals
-  vitalSigns?: string; // JSON string
-
-  // Doctor's Notes
+  vitalSigns?: string;
   doctorNotes?: string;
   recommendations?: string;
-
-  // Audit
   createdAt: string;
   updatedAt: string;
 }

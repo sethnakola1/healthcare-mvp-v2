@@ -1,49 +1,74 @@
 // src/services/doctor.service.ts
-import { apiService } from './api.service';
-import { DoctorDto, CreateDoctorRequest } from '../types/doctor.types';
-import { ApiResponse } from '../types/api.types';
+import apiService, { ApiResponse } from './api.service';
+
+export interface DoctorDto {
+  doctorId: string;
+  hospitalId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  specialization: string;
+  medicalLicenseNumber: string;
+  isActive: boolean;
+  // Add other properties as needed
+}
+
+export interface CreateDoctorRequest {
+  hospitalId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phoneNumber?: string;
+  specialization: string;
+  medicalLicenseNumber: string;
+  qualification?: string;
+  experienceYears?: number;
+  department?: string;
+  consultationFee?: number;
+  availableDays?: string[];
+  availableStartTime?: string;
+  availableEndTime?: string;
+  dateOfJoining?: string;
+  bio?: string;
+  languagesSpoken?: string[];
+  isTelemedicineEnabled?: boolean;
+}
 
 class DoctorService {
-  // Create doctor
   async createDoctor(request: CreateDoctorRequest): Promise<ApiResponse<DoctorDto>> {
-    return apiService.post<DoctorDto>('/api/doctors', request);
+    return apiService.post<ApiResponse<DoctorDto>>('/doctors', request);
   }
 
-  // Get hospital doctors
   async getHospitalDoctors(hospitalId: string): Promise<ApiResponse<DoctorDto[]>> {
-    return apiService.get<DoctorDto[]>(`/api/doctors/hospital/${hospitalId}`);
+    return apiService.get<ApiResponse<DoctorDto[]>>(`/doctors/hospital/${hospitalId}`);
   }
 
-  // Get doctor by ID
   async getDoctorById(doctorId: string): Promise<ApiResponse<DoctorDto>> {
-    return apiService.get<DoctorDto>(`/api/doctors/${doctorId}`);
+    return apiService.get<ApiResponse<DoctorDto>>(`/doctors/${doctorId}`);
   }
 
-  // Get doctor by code
   async getDoctorByCode(doctorCode: string): Promise<ApiResponse<DoctorDto>> {
-    return apiService.get<DoctorDto>(`/api/doctors/code/${doctorCode}`);
+    return apiService.get<ApiResponse<DoctorDto>>(`/doctors/code/${doctorCode}`);
   }
 
-  // Search doctors
   async searchDoctors(searchTerm: string): Promise<ApiResponse<DoctorDto[]>> {
     const params = new URLSearchParams({ searchTerm });
-    return apiService.get<DoctorDto[]>(`/api/doctors/search?${params.toString()}`);
+    return apiService.get<ApiResponse<DoctorDto[]>>(`/doctors/search?${params}`);
   }
 
-  // Get doctors by specialization
   async getDoctorsBySpecialization(specialization: string): Promise<ApiResponse<DoctorDto[]>> {
-    return apiService.get<DoctorDto[]>(`/api/doctors/specialization/${specialization}`);
+    return apiService.get<ApiResponse<DoctorDto[]>>(`/doctors/specialization/${specialization}`);
   }
 
-  // Update doctor
   async updateDoctor(doctorId: string, request: CreateDoctorRequest): Promise<ApiResponse<DoctorDto>> {
-    return apiService.put<DoctorDto>(`/api/doctors/${doctorId}`, request);
+    return apiService.put<ApiResponse<DoctorDto>>(`/doctors/${doctorId}`, request);
   }
 
-  // Deactivate doctor
   async deactivateDoctor(doctorId: string): Promise<ApiResponse<string>> {
-    return apiService.delete<string>(`/api/doctors/${doctorId}`);
+    return apiService.delete<ApiResponse<string>>(`/doctors/${doctorId}`);
   }
 }
 
-export const doctorService = new DoctorService();
+const doctorService = new DoctorService();
+export default doctorService;
+export { doctorService };

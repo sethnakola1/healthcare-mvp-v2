@@ -62,6 +62,8 @@ export interface User {
   isActive: boolean;
   emailVerified: boolean;
   
+
+  
 }
 
 export enum UserRole {

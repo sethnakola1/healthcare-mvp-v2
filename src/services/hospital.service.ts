@@ -1,39 +1,72 @@
 // src/services/hospital.service.ts
-import { apiService } from './api.service';
-import { HospitalDto, CreateHospitalRequest } from '../types/hospital.types';
-import { ApiResponse } from '../types/api.types';
+import apiService, { ApiResponse } from './api.service';
+
+export interface HospitalDto {
+  hospitalId: string;
+  hospitalName: string;
+  hospitalCode: string;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  phoneNumber?: string;
+  email?: string;
+  website?: string;
+  isActive: boolean;
+  // Add other properties as needed
+}
+
+export interface CreateHospitalRequest {
+  hospitalName: string;
+  licenseNumber?: string;
+  taxId?: string;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  postalCode?: string;
+  phoneNumber?: string;
+  email?: string;
+  website?: string;
+  partnerCodeUsed?: string;
+  techSupport1Id?: string;
+  techSupport2Id?: string;
+  subscriptionPlan?: string;
+  contractStartDate?: string;
+  contractEndDate?: string;
+}
 
 class HospitalService {
-  // Create hospital
-  async createHospital(request: CreateHospitalRequest, createdBy: string): Promise<ApiResponse<HospitalDto>> {
-    const params = new URLSearchParams({ createdByBusinessUserId: createdBy });
-    return apiService.post<HospitalDto>(`/api/hospitals?${params.toString()}`, request);
+  async createHospital(request: CreateHospitalRequest, createdByBusinessUserId: string): Promise<ApiResponse<HospitalDto>> {
+    const params = new URLSearchParams({ createdByBusinessUserId });
+    return apiService.post<ApiResponse<HospitalDto>>(`/hospitals?${params}`, request);
   }
 
-  // Get all hospitals
   async getAllHospitals(): Promise<ApiResponse<HospitalDto[]>> {
-    return apiService.get<HospitalDto[]>('/api/hospitals');
+    return apiService.get<ApiResponse<HospitalDto[]>>('/hospitals');
   }
 
-  // Get hospital by ID
+  async getHospitalsByBusinessUser(partnerCodeUsed: string): Promise<ApiResponse<HospitalDto[]>> {
+    return apiService.get<ApiResponse<HospitalDto[]>>(`/hospitals/business-user/${partnerCodeUsed}`);
+  }
+
   async getHospitalById(hospitalId: string): Promise<ApiResponse<HospitalDto>> {
-    return apiService.get<HospitalDto>(`/api/hospitals/${hospitalId}`);
+    return apiService.get<ApiResponse<HospitalDto>>(`/hospitals/${hospitalId}`);
   }
 
-  // Get hospital by code
   async getHospitalByCode(hospitalCode: string): Promise<ApiResponse<HospitalDto>> {
-    return apiService.get<HospitalDto>(`/api/hospitals/code/${hospitalCode}`);
+    return apiService.get<ApiResponse<HospitalDto>>(`/hospitals/code/${hospitalCode}`);
   }
 
-  // Update hospital
   async updateHospital(hospitalId: string, request: CreateHospitalRequest): Promise<ApiResponse<HospitalDto>> {
-    return apiService.put<HospitalDto>(`/api/hospitals/${hospitalId}`, request);
+    return apiService.put<ApiResponse<HospitalDto>>(`/hospitals/${hospitalId}`, request);
   }
 
-  // Deactivate hospital
   async deactivateHospital(hospitalId: string): Promise<ApiResponse<string>> {
-    return apiService.delete<string>(`/api/hospitals/${hospitalId}`);
+    return apiService.delete<ApiResponse<string>>(`/hospitals/${hospitalId}`);
   }
 }
 
-export const hospitalService = new HospitalService();
+const hospitalService = new HospitalService();
+export default hospitalService;
+export { hospitalService };

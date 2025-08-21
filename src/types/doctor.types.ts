@@ -2,7 +2,7 @@
 export interface DoctorDto {
   doctorId: string;
   hospitalId: string;
-  hospitalName: string;
+  hospitalName?: string;
   doctorCode: string;
   firstName: string;
   lastName: string;

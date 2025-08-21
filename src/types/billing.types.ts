@@ -3,34 +3,26 @@ export interface BillingDto {
   billingId: string;
   billNumber: string;
   patientId: string;
-  patientName: string;
+  patientName?: string;
   hospitalId: string;
-  hospitalName: string;
+  hospitalName?: string;
   appointmentId?: string;
-
-  // Bill Details
   billDate: string;
   consultationFee: number;
   testCharges: number;
   procedureCharges: number;
   medicationCharges: number;
   otherCharges: number;
-
-  // Totals
   subtotal: number;
   taxPercentage: number;
   taxAmount: number;
   discountPercentage: number;
   discountAmount: number;
   totalAmount: number;
-
-  // Payment Details
   paymentStatus: string;
   paymentMethod?: string;
   insuranceProvider?: string;
   notes?: string;
-
-  // Audit
   createdAt: string;
   updatedAt: string;
 }
@@ -48,5 +40,7 @@ export interface CreateBillRequest {
   discountPercentage?: number;
   paymentMethod?: string;
   insuranceProvider?: string;
+  insuranceClaimNumber?: string;
+  insuranceApprovedAmount?: number;
   notes?: string;
 }

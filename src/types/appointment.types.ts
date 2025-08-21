@@ -1,43 +1,38 @@
 // src/types/appointment.types.ts
+
 export interface AppointmentDto {
-  // Basic Information
   appointmentId: string;
   hospitalId: string;
-  hospitalName: string;
+  hospitalName?: string;
   patientId: string;
-  patientName: string;
-  patientMrn: string;
+  patientName?: string;
+  patientMrn?: string;
   doctorId: string;
-  doctorName: string;
-  doctorSpecialization: string;
+  doctorName?: string;
+  doctorSpecialization?: string;
 
-  // Appointment Details
   appointmentDateTime: string;
   durationMinutes: number;
   status: AppointmentStatus;
   appointmentType: AppointmentType;
 
-  // Medical Information
   chiefComplaint?: string;
   notes?: string;
   cancellationReason?: string;
 
-  // Virtual Appointment
   isVirtual: boolean;
   meetingLink?: string;
 
-  // Special Flags
   isEmergency: boolean;
   followUpRequired: boolean;
   followUpDate?: string;
 
-  // Audit
   isActive: boolean;
-  createdBy: string;
-  updatedBy: string;
+  createdBy?: string;
+  updatedBy?: string;
   createdAt: string;
   updatedAt: string;
-  version: number;
+  version?: number;
 }
 
 export interface CreateAppointmentRequest {
@@ -45,14 +40,14 @@ export interface CreateAppointmentRequest {
   patientId: string;
   doctorId: string;
   appointmentDateTime: string;
-  durationMinutes: number;
-  appointmentType: AppointmentType;
+  durationMinutes?: number;
+  appointmentType?: AppointmentType;
   chiefComplaint?: string;
   notes?: string;
-  isVirtual: boolean;
+  isVirtual?: boolean;
   meetingLink?: string;
-  isEmergency: boolean;
-  followUpRequired: boolean;
+  isEmergency?: boolean;
+  followUpRequired?: boolean;
   followUpDate?: string;
 }
 
@@ -73,3 +68,17 @@ export enum AppointmentType {
   PROCEDURE = 'PROCEDURE',
   SURGERY = 'SURGERY'
 }
+
+export interface AppointmentFilters {
+  hospitalId?: string;
+  patientId?: string;
+  doctorId?: string;
+  status?: AppointmentStatus;
+  appointmentType?: AppointmentType;
+  dateFrom?: string;
+  dateTo?: string;
+  isVirtual?: boolean;
+  isEmergency?: boolean;
+}
+
+export default AppointmentDto;
