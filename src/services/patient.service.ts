@@ -1,22 +1,8 @@
 // src/services/patient.service.ts
-import apiService, { ApiResponse, PaginatedResponse } from './api.service';
+import axios, { AxiosResponse } from 'axios';
+import { BaseResponse } from './auth.service';
 
-export interface PatientDto {
-  patientId: string;
-  hospitalId: string;
-  globalPatientId: string;
-  mrn: string;
-  firstName: string;
-  lastName: string;
-  dateOfBirth: string;
-  gender: string;
-  email?: string;
-  phoneNumber?: string;
-  address?: string;
-  bloodGroup?: string;
-  isActive: boolean;
-  // Add other properties as needed
-}
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
 
 export interface CreatePatientRequest {
   hospitalId: string;
@@ -39,38 +25,155 @@ export interface CreatePatientRequest {
   ssnLast4?: string;
 }
 
+export interface PatientDto {
+  patientId: string;
+  hospitalId: string;
+  hospitalName: string;
+  globalPatientId: string;
+  mrn: string;
+  firstName: string;
+  lastName: string;
+  dateOfBirth: string;
+  gender: string;
+  email?: string;
+  phoneNumber?: string;
+  address?: string;
+  bloodGroup?: string;
+  contactInfo?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  emergencyContactRelationship?: string;
+  initialSymptoms?: string;
+  allergies?: string;
+  currentMedications?: string;
+  chronicConditions?: string;
+  fhirPatientId?: string;
+  ssnLast4?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  age?: number;
+  fullName: string;
+}
+
 class PatientService {
-  async registerPatient(request: CreatePatientRequest): Promise<ApiResponse<PatientDto>> {
-    return apiService.post<ApiResponse<PatientDto>>('/patients', request);
+  private readonly baseURL: string;
+
+  constructor() {
+    this.baseURL = `${API_BASE_URL}/patients`;
   }
 
-  async getPatientsByHospital(hospitalId: string, page = 0, size = 20, search?: string): Promise<ApiResponse<PaginatedResponse<PatientDto>>> {
-    const params = new URLSearchParams({
-      page: page.toString(),
-      size: size.toString()
-    });
+  private getAuthHeaders() {
+    const token = localStorage.getItem('token');
+    return {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    };
+  }
 
-    if (search) {
-      params.append('search', search);
+  async registerPatient(request: CreatePatientRequest): Promise<BaseResponse<PatientDto>> {
+    try {
+      const response: AxiosResponse<BaseResponse<PatientDto>> = await axios.post(
+        this.baseURL,
+        request,
+        { headers: this.getAuthHeaders() }
+      );
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || error;
     }
-
-    return apiService.get<ApiResponse<PaginatedResponse<PatientDto>>>(`/patients/hospital/${hospitalId}?${params}`);
   }
 
-  async getPatientById(patientId: string): Promise<ApiResponse<PatientDto>> {
-    return apiService.get<ApiResponse<PatientDto>>(`/patients/${patientId}`);
+  async getHospitalPatients(
+    hospitalId: string,
+    page = 0,
+    size = 20,
+    search?: string
+  ): Promise<BaseResponse<any>> {
+    try {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        size: size.toString(),
+      });
+
+      if (search) {
+        params.append('search', search);
+      }
+
+      const response: AxiosResponse<BaseResponse<any>> = await axios.get(
+        `${this.baseURL}/hospital/${hospitalId}?${params.toString()}`,
+        { headers: this.getAuthHeaders() }
+      );
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || error;
+    }
   }
 
-  async searchPatientsGlobally(searchTerm: string): Promise<ApiResponse<PatientDto[]>> {
-    const params = new URLSearchParams({ searchTerm });
-    return apiService.get<ApiResponse<PatientDto[]>>(`/patients/search?${params}`);
+  async getPatientById(patientId: string): Promise<BaseResponse<PatientDto>> {
+    try {
+      const response: AxiosResponse<BaseResponse<PatientDto>> = await axios.get(
+        `${this.baseURL}/${patientId}`,
+        { headers: this.getAuthHeaders() }
+      );
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || error;
+    }
   }
 
-  async updatePatient(patientId: string, request: CreatePatientRequest): Promise<ApiResponse<PatientDto>> {
-    return apiService.put<ApiResponse<PatientDto>>(`/patients/${patientId}`, request);
+  async searchPatientsGlobally(searchTerm: string): Promise<BaseResponse<PatientDto[]>> {
+    try {
+      const params = new URLSearchParams({ searchTerm });
+      const response: AxiosResponse<BaseResponse<PatientDto[]>> = await axios.get(
+        `${this.baseURL}/search?${params.toString()}`,
+        { headers: this.getAuthHeaders() }
+      );
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || error;
+    }
+  }
+
+  async updatePatient(patientId: string, request: CreatePatientRequest): Promise<BaseResponse<PatientDto>> {
+    try {
+      const response: AxiosResponse<BaseResponse<PatientDto>> = await axios.put(
+        `${this.baseURL}/${patientId}`,
+        request,
+        { headers: this.getAuthHeaders() }
+      );
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || error;
+    }
+  }
+
+  async getPatientByMrn(mrn: string): Promise<BaseResponse<PatientDto[]>> {
+    try {
+      const params = new URLSearchParams({ mrn });
+      const response: AxiosResponse<BaseResponse<PatientDto[]>> = await axios.get(
+        `${this.baseURL}/mrn?${params.toString()}`,
+        { headers: this.getAuthHeaders() }
+      );
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || error;
+    }
+  }
+
+  async getPatientByGlobalId(globalPatientId: string): Promise<BaseResponse<PatientDto>> {
+    try {
+      const response: AxiosResponse<BaseResponse<PatientDto>> = await axios.get(
+        `${this.baseURL}/global/${globalPatientId}`,
+        { headers: this.getAuthHeaders() }
+      );
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || error;
+    }
   }
 }
 
-const patientService = new PatientService();
-export default patientService;
-export { patientService };
+const patientServiceInstance = new PatientService();
+export { patientServiceInstance as patientService };
+export default patientServiceInstance;

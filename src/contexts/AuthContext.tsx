@@ -1,6 +1,7 @@
+// src/contexts/AuthContext.tsx
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
+import { authService } from '../services/auth.service';
 
-// Types
 export interface User {
   userId: string;
   email: string;
@@ -17,59 +18,44 @@ export interface User {
   partnerCode?: string;
   lastLogin?: string;
   createdAt?: string;
-  commissionPercentage?: number;
-  targetHospitalsMonthly?: number;
-  totalHospitalsBrought?: number;
-  totalCommissionEarned?: number;
-}
-
-export interface LoginCredentials {
-  email: string;
-  password: string;
 }
 
 export interface AuthState {
   user: User | null;
+  token: string | null;
+  refreshToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
-  token: string | null;
-  refreshToken: string | null;
 }
 
 export interface AuthContextType {
   authState: AuthState;
-  login: (credentials: LoginCredentials) => Promise<void>;
-  logout: () => void;
-  refreshAuth: () => Promise<void>;
-  clearError: () => void;
   user: User | null;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => void;
+  clearError: () => void;
 }
 
-// Action Types
 type AuthAction =
   | { type: 'LOGIN_START' }
   | { type: 'LOGIN_SUCCESS'; payload: { user: User; token: string; refreshToken: string } }
   | { type: 'LOGIN_FAILURE'; payload: string }
   | { type: 'LOGOUT' }
-  | { type: 'REFRESH_START' }
-  | { type: 'REFRESH_SUCCESS'; payload: { user: User; token: string } }
-  | { type: 'REFRESH_FAILURE' }
-  | { type: 'CLEAR_ERROR' }
-  | { type: 'SET_LOADING'; payload: boolean };
+  | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'SET_ERROR'; payload: string | null }
+  | { type: 'UPDATE_USER'; payload: User };
 
-// Initial State
 const initialState: AuthState = {
   user: null,
+  token: null,
+  refreshToken: null,
   isAuthenticated: false,
   isLoading: false,
   error: null,
-  token: localStorage.getItem('accessToken'),
-  refreshToken: localStorage.getItem('refreshToken'),
 };
 
-// Reducer
-function authReducer(state: AuthState, action: AuthAction): AuthState {
+const authReducer = (state: AuthState, action: AuthAction): AuthState => {
   switch (action.type) {
     case 'LOGIN_START':
       return {
@@ -77,304 +63,210 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
         isLoading: true,
         error: null,
       };
-
     case 'LOGIN_SUCCESS':
       return {
         ...state,
         user: action.payload.user,
+        token: action.payload.token,
+        refreshToken: action.payload.refreshToken,
         isAuthenticated: true,
         isLoading: false,
         error: null,
-        token: action.payload.token,
-        refreshToken: action.payload.refreshToken,
       };
-
     case 'LOGIN_FAILURE':
       return {
         ...state,
         user: null,
+        token: null,
+        refreshToken: null,
         isAuthenticated: false,
         isLoading: false,
         error: action.payload,
-        token: null,
-        refreshToken: null,
       };
-
     case 'LOGOUT':
       return {
-        ...state,
-        user: null,
-        isAuthenticated: false,
-        isLoading: false,
-        error: null,
-        token: null,
-        refreshToken: null,
+        ...initialState,
       };
-
-    case 'REFRESH_START':
-      return {
-        ...state,
-        isLoading: true,
-        error: null,
-      };
-
-    case 'REFRESH_SUCCESS':
-      return {
-        ...state,
-        user: action.payload.user,
-        isAuthenticated: true,
-        isLoading: false,
-        error: null,
-        token: action.payload.token,
-      };
-
-    case 'REFRESH_FAILURE':
-      return {
-        ...state,
-        user: null,
-        isAuthenticated: false,
-        isLoading: false,
-        token: null,
-        refreshToken: null,
-      };
-
-    case 'CLEAR_ERROR':
-      return {
-        ...state,
-        error: null,
-      };
-
     case 'SET_LOADING':
       return {
         ...state,
         isLoading: action.payload,
       };
-
+    case 'SET_ERROR':
+      return {
+        ...state,
+        error: action.payload,
+      };
+    case 'UPDATE_USER':
+      return {
+        ...state,
+        user: action.payload,
+      };
     default:
       return state;
   }
 }
 
-// Create Context
+interface AuthContextType {
+  authState: AuthState;
+  user: User | null;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => void;
+  refreshToken: () => Promise<void>;
+  updateUser: (user: User) => void;
+  clearError: () => void;
+}
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// API Base URL
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
+export const useAuth = (): AuthContextType => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
 
-// AuthProvider Component
-export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+interface AuthProviderProps {
+  children: ReactNode;
+}
+
+export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [authState, dispatch] = useReducer(authReducer, initialState);
 
-  // API Helper Function
-  const apiCall = async (url: string, options: RequestInit = {}) => {
-    const response = await fetch(`${API_BASE_URL}${url}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-      ...options,
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || data.error || 'An error occurred');
-    }
-
-    return data;
-  };
-
-  // Login Function
-  const login = async (credentials: LoginCredentials) => {
-    dispatch({ type: 'LOGIN_START' });
-
-    try {
-      const response = await apiCall('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify(credentials),
-      });
-
-      if (response.success && response.data) {
-        const { accessToken, refreshToken, ...userData } = response.data;
-
-        // Store tokens
-        localStorage.setItem('accessToken', accessToken);
-        localStorage.setItem('refreshToken', refreshToken);
-
-        // Create user object
-        const user: User = {
-          userId: userData.userId,
-          email: userData.email,
-          firstName: userData.firstName,
-          lastName: userData.lastName,
-          fullName: `${userData.firstName} ${userData.lastName}`,
-          username: userData.email,
-          role: userData.role,
-          roleDisplayName: userData.role,
-          isActive: true,
-          emailVerified: true,
-        };
-
-        dispatch({
-          type: 'LOGIN_SUCCESS',
-          payload: { user, token: accessToken, refreshToken },
-        });
-      } else {
-        throw new Error(response.message || 'Login failed');
-      }
-    } catch (error: any) {
-      console.error('Login error:', error);
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      dispatch({
-        type: 'LOGIN_FAILURE',
-        payload: error.message || 'Login failed. Please try again.',
-      });
-      throw error;
-    }
-  };
-
-  // Logout Function
-  const logout = () => {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    dispatch({ type: 'LOGOUT' });
-  };
-
-  // Refresh Auth Function
-  const refreshAuth = async () => {
-    const refreshToken = localStorage.getItem('refreshToken');
-
-    if (!refreshToken) {
-      dispatch({ type: 'REFRESH_FAILURE' });
-      return;
-    }
-
-    dispatch({ type: 'REFRESH_START' });
-
-    try {
-      const response = await apiCall('/auth/refresh', {
-        method: 'POST',
-        body: JSON.stringify({ refreshToken }),
-      });
-
-      if (response.success && response.data) {
-        const { accessToken, ...userData } = response.data;
-
-        // Update stored token
-        localStorage.setItem('accessToken', accessToken);
-
-        // Create user object
-        const user: User = {
-          userId: userData.userId,
-          email: userData.email,
-          firstName: userData.firstName,
-          lastName: userData.lastName,
-          fullName: `${userData.firstName} ${userData.lastName}`,
-          username: userData.email,
-          role: userData.role,
-          roleDisplayName: userData.role,
-          isActive: true,
-          emailVerified: true,
-        };
-
-        dispatch({
-          type: 'REFRESH_SUCCESS',
-          payload: { user, token: accessToken },
-        });
-      } else {
-        throw new Error('Token refresh failed');
-      }
-    } catch (error) {
-      console.error('Token refresh error:', error);
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      dispatch({ type: 'REFRESH_FAILURE' });
-    }
-  };
-
-  // Clear Error Function
-  const clearError = () => {
-    dispatch({ type: 'CLEAR_ERROR' });
-  };
-
-  // Get Current User Function
-  const getCurrentUser = async () => {
-    const token = localStorage.getItem('accessToken');
-
-    if (!token) {
-      return;
-    }
-
-    try {
-      const response = await apiCall('/auth/me', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (response.success && response.data) {
-        const userData = response.data;
-        const user: User = {
-          userId: userData.userId,
-          email: userData.email,
-          firstName: userData.firstName,
-          lastName: userData.lastName,
-          fullName: userData.fullName || `${userData.firstName} ${userData.lastName}`,
-          username: userData.username,
-          role: userData.role,
-          roleDisplayName: userData.roleDisplayName,
-          isActive: userData.isActive,
-          emailVerified: userData.emailVerified,
-          phoneNumber: userData.phoneNumber,
-          territory: userData.territory,
-          partnerCode: userData.partnerCode,
-          lastLogin: userData.lastLogin,
-          createdAt: userData.createdAt,
-          commissionPercentage: userData.commissionPercentage,
-          targetHospitalsMonthly: userData.targetHospitalsMonthly,
-          totalHospitalsBrought: userData.totalHospitalsBrought,
-          totalCommissionEarned: userData.totalCommissionEarned,
-        };
-
-        dispatch({
-          type: 'LOGIN_SUCCESS',
-          payload: {
-            user,
-            token,
-            refreshToken: localStorage.getItem('refreshToken') || ''
-          },
-        });
-      }
-    } catch (error) {
-      console.error('Get current user error:', error);
-      // If getting current user fails, try to refresh the token
-      await refreshAuth();
-    }
-  };
-
-  // Initialize auth state on app load
+  // Initialize auth state from localStorage
   useEffect(() => {
     const initializeAuth = async () => {
-      const token = localStorage.getItem('accessToken');
+      const token = localStorage.getItem('token');
+      const refreshToken = localStorage.getItem('refreshToken');
+      const userStr = localStorage.getItem('user');
 
-      if (token) {
-        dispatch({ type: 'SET_LOADING', payload: true });
-        await getCurrentUser();
-        dispatch({ type: 'SET_LOADING', payload: false });
+      if (token && userStr) {
+        try {
+          const user = JSON.parse(userStr);
+          dispatch({
+            type: 'LOGIN_SUCCESS',
+            payload: { user, token, refreshToken: refreshToken || '' }
+          });
+        } catch (error) {
+          console.error('Failed to parse stored user:', error);
+          logout();
+        }
       }
     };
 
     initializeAuth();
   }, []);
 
+  const login = async (email: string, password: string): Promise<void> => {
+    dispatch({ type: 'LOGIN_START' });
+
+    try {
+      const response = await authService.login({ email, password });
+
+      if (response.success && response.data) {
+        const { accessToken, refreshToken: newRefreshToken, ...userData } = response.data;
+
+        const user: User = {
+          userId: userData.userId,
+          email: userData.email,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          fullName: `${userData.firstName} ${userData.lastName}`,
+          username: userData.email,
+          role: userData.role,
+          roleDisplayName: userData.role.replace('_', ' '),
+          isActive: true,
+          emailVerified: true,
+        };
+
+        // Store in localStorage
+        localStorage.setItem('token', accessToken);
+        localStorage.setItem('refreshToken', newRefreshToken);
+        localStorage.setItem('user', JSON.stringify(user));
+
+        dispatch({
+          type: 'LOGIN_SUCCESS',
+          payload: { user, token: accessToken, refreshToken: newRefreshToken }
+        });
+      } else {
+        throw new Error(response.message || 'Login failed');
+      }
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || error.message || 'Login failed';
+      dispatch({ type: 'LOGIN_FAILURE', payload: errorMessage });
+      throw error;
+    }
+  };
+
+  const logout = (): void => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('user');
+    dispatch({ type: 'LOGOUT' });
+  };
+
+  const refreshTokenFn = async (): Promise<void> => {
+    const storedRefreshToken = localStorage.getItem('refreshToken');
+
+    if (!storedRefreshToken) {
+      logout();
+      return;
+    }
+
+    try {
+      const response = await authService.refreshToken({ refreshToken: storedRefreshToken });
+
+      if (response.success && response.data) {
+        const { accessToken, refreshToken: newRefreshToken, ...userData } = response.data;
+
+        const user: User = {
+          userId: userData.userId,
+          email: userData.email,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          fullName: `${userData.firstName} ${userData.lastName}`,
+          username: userData.email,
+          role: userData.role,
+          roleDisplayName: userData.role.replace('_', ' '),
+          isActive: true,
+          emailVerified: true,
+        };
+
+        localStorage.setItem('token', accessToken);
+        localStorage.setItem('refreshToken', newRefreshToken);
+        localStorage.setItem('user', JSON.stringify(user));
+
+        dispatch({
+          type: 'LOGIN_SUCCESS',
+          payload: { user, token: accessToken, refreshToken: newRefreshToken }
+        });
+      } else {
+        logout();
+      }
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+      logout();
+    }
+  };
+
+  const updateUser = (user: User): void => {
+    localStorage.setItem('user', JSON.stringify(user));
+    dispatch({ type: 'UPDATE_USER', payload: user });
+  };
+
+  const clearError = (): void => {
+    dispatch({ type: 'SET_ERROR', payload: null });
+  };
+
   const contextValue: AuthContextType = {
     authState,
+    user: authState.user,
     login,
     logout,
-    refreshAuth,
+    refreshToken: refreshTokenFn,
+    updateUser,
     clearError,
-    user: authState.user,
   };
 
   return (
@@ -384,7 +276,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   );
 };
 
-// Custom Hook
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (context === undefined) {

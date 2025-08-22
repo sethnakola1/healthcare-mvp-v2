@@ -1,16 +1,8 @@
 // src/services/appointment.service.ts
-import apiService, { ApiResponse } from './api.service';
+import axios, { AxiosResponse } from 'axios';
+import { BaseResponse } from './auth.service';
 
-// Define types
-export interface AppointmentDto {
-  appointmentId: string;
-  hospitalId: string;
-  patientId: string;
-  doctorId: string;
-  appointmentDateTime: string;
-  status: string;
-  // Add other properties as needed
-}
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
 
 export interface CreateAppointmentRequest {
   hospitalId: string;
@@ -28,48 +20,170 @@ export interface CreateAppointmentRequest {
   followUpDate?: string;
 }
 
+export interface AppointmentDto {
+  appointmentId: string;
+  hospitalId: string;
+  hospitalName: string;
+  patientId: string;
+  patientName: string;
+  patientMrn: string;
+  doctorId: string;
+  doctorName: string;
+  doctorSpecialization: string;
+  appointmentDateTime: string;
+  durationMinutes: number;
+  status: string;
+  appointmentType: string;
+  chiefComplaint?: string;
+  notes?: string;
+  cancellationReason?: string;
+  isVirtual: boolean;
+  meetingLink?: string;
+  isEmergency: boolean;
+  followUpRequired: boolean;
+  followUpDate?: string;
+  isActive: boolean;
+  createdBy: string;
+  updatedBy: string;
+  createdAt: string;
+  updatedAt: string;
+  version: number;
+}
+
 class AppointmentService {
-  async createAppointment(request: CreateAppointmentRequest): Promise<ApiResponse<AppointmentDto>> {
-    return apiService.post<ApiResponse<AppointmentDto>>('/appointments', request);
+  private readonly baseURL: string;
+
+  constructor() {
+    this.baseURL = `${API_BASE_URL}/appointments`;
   }
 
-  async getHospitalAppointments(hospitalId: string): Promise<ApiResponse<AppointmentDto[]>> {
-    return apiService.get<ApiResponse<AppointmentDto[]>>(`/appointments/hospital/${hospitalId}`);
+  private getAuthHeaders() {
+    const token = localStorage.getItem('token');
+    return {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    };
   }
 
-  async getDoctorAppointments(doctorId: string): Promise<ApiResponse<AppointmentDto[]>> {
-    return apiService.get<ApiResponse<AppointmentDto[]>>(`/appointments/doctor/${doctorId}`);
+  async createAppointment(request: CreateAppointmentRequest): Promise<BaseResponse<AppointmentDto>> {
+    try {
+      const response: AxiosResponse<BaseResponse<AppointmentDto>> = await axios.post(
+        this.baseURL,
+        request,
+        { headers: this.getAuthHeaders() }
+      );
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || error;
+    }
   }
 
-  async getPatientAppointments(patientId: string): Promise<ApiResponse<AppointmentDto[]>> {
-    return apiService.get<ApiResponse<AppointmentDto[]>>(`/appointments/patient/${patientId}`);
+  async getHospitalAppointments(hospitalId: string): Promise<BaseResponse<AppointmentDto[]>> {
+    try {
+      const response: AxiosResponse<BaseResponse<AppointmentDto[]>> = await axios.get(
+        `${this.baseURL}/hospital/${hospitalId}`,
+        { headers: this.getAuthHeaders() }
+      );
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || error;
+    }
   }
 
-  async updateAppointmentStatus(appointmentId: string, status: string, reason?: string): Promise<ApiResponse<AppointmentDto>> {
-    const params = new URLSearchParams({ status });
-    if (reason) params.append('reason', reason);
-
-    return apiService.put<ApiResponse<AppointmentDto>>(`/appointments/${appointmentId}/status?${params}`);
+  async getDoctorAppointments(doctorId: string): Promise<BaseResponse<AppointmentDto[]>> {
+    try {
+      const response: AxiosResponse<BaseResponse<AppointmentDto[]>> = await axios.get(
+        `${this.baseURL}/doctor/${doctorId}`,
+        { headers: this.getAuthHeaders() }
+      );
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || error;
+    }
   }
 
-  async cancelAppointment(appointmentId: string, reason: string): Promise<ApiResponse<string>> {
-    const params = new URLSearchParams({ reason });
-    return apiService.delete<ApiResponse<string>>(`/appointments/${appointmentId}?${params}`);
+  async getPatientAppointments(patientId: string): Promise<BaseResponse<AppointmentDto[]>> {
+    try {
+      const response: AxiosResponse<BaseResponse<AppointmentDto[]>> = await axios.get(
+        `${this.baseURL}/patient/${patientId}`,
+        { headers: this.getAuthHeaders() }
+      );
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || error;
+    }
   }
 
-  async getTodaysPatientAppointments(patientId: string): Promise<ApiResponse<AppointmentDto[]>> {
-    return apiService.get<ApiResponse<AppointmentDto[]>>(`/appointments/patient/${patientId}/today`);
+  async getTodaysHospitalAppointments(hospitalId: string): Promise<BaseResponse<AppointmentDto[]>> {
+    try {
+      const response: AxiosResponse<BaseResponse<AppointmentDto[]>> = await axios.get(
+        `${this.baseURL}/hospital/${hospitalId}/today`,
+        { headers: this.getAuthHeaders() }
+      );
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || error;
+    }
   }
 
-  async getTodaysHospitalAppointments(hospitalId: string): Promise<ApiResponse<AppointmentDto[]>> {
-    return apiService.get<ApiResponse<AppointmentDto[]>>(`/appointments/hospital/${hospitalId}/today`);
+  async getTodaysDoctorAppointments(doctorId: string): Promise<BaseResponse<AppointmentDto[]>> {
+    try {
+      const response: AxiosResponse<BaseResponse<AppointmentDto[]>> = await axios.get(
+        `${this.baseURL}/doctor/${doctorId}/today`,
+        { headers: this.getAuthHeaders() }
+      );
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || error;
+    }
   }
 
-  async getTodaysDoctorAppointments(doctorId: string): Promise<ApiResponse<AppointmentDto[]>> {
-    return apiService.get<ApiResponse<AppointmentDto[]>>(`/appointments/doctor/${doctorId}/today`);
+  async getTodaysPatientAppointments(patientId: string): Promise<BaseResponse<AppointmentDto[]>> {
+    try {
+      const response: AxiosResponse<BaseResponse<AppointmentDto[]>> = await axios.get(
+        `${this.baseURL}/patient/${patientId}/today`,
+        { headers: this.getAuthHeaders() }
+      );
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || error;
+    }
+  }
+
+  async updateAppointmentStatus(
+    appointmentId: string,
+    status: string,
+    reason?: string
+  ): Promise<BaseResponse<AppointmentDto>> {
+    try {
+      const params = new URLSearchParams({ status });
+      if (reason) params.append('reason', reason);
+
+      const response: AxiosResponse<BaseResponse<AppointmentDto>> = await axios.put(
+        `${this.baseURL}/${appointmentId}/status?${params.toString()}`,
+        {},
+        { headers: this.getAuthHeaders() }
+      );
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || error;
+    }
+  }
+
+  async cancelAppointment(appointmentId: string, reason: string): Promise<BaseResponse<string>> {
+    try {
+      const params = new URLSearchParams({ reason });
+      const response: AxiosResponse<BaseResponse<string>> = await axios.delete(
+        `${this.baseURL}/${appointmentId}?${params.toString()}`,
+        { headers: this.getAuthHeaders() }
+      );
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || error;
+    }
   }
 }
 
-const appointmentService = new AppointmentService();
-export default appointmentService;
-export { appointmentService };
+const appointmentServiceInstance = new AppointmentService();
+export { appointmentServiceInstance as appointmentService };
+export default appointmentServiceInstance;

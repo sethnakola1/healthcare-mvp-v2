@@ -1,192 +1,234 @@
 // src/services/auth.service.ts
-import {
-  User,
-  LoginRequest,
-  LoginResponse,
-  AuthResponse,
-  PasswordResetRequest,
-  PasswordResetResponse,
-  ChangePasswordRequest,
-  ApiError
-} from '../types/auth.types';
+import axios, { AxiosResponse } from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface RefreshTokenRequest {
+  refreshToken: string;
+}
+
+export interface LoginResponse {
+  accessToken: string;
+  refreshToken: string;
+  tokenType: string;
+  expiresIn: number;
+  userId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  loginTime: string;
+}
+
+export interface BaseResponse<T> {
+  success: boolean;
+  message: string;
+  data?: T;
+  error?: string;
+  errorCode?: string;
+  timestamp: string;
+  path?: string;
+}
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
 
 class AuthService {
-  private async makeRequest<T>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<T> {
-    const url = `${API_BASE_URL}${endpoint}`;
-    
-    const defaultOptions: RequestInit = {
-      credentials: 'include', // Include HTTP-only cookies
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest', // CSRF protection
-        ...options.headers,
-      },
-    };
+  private readonly baseURL: string;
 
-    const config = { ...defaultOptions, ...options };
-
-    try {
-      const response = await fetch(url, config);
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        const error: ApiError = {
-          message: errorData.message || `HTTP error! status: ${response.status}`,
-          status: response.status,
-          code: errorData.code
-        };
-        throw error;
-      }
-
-      return await response.json();
-    } catch (error) {
-      if (error instanceof Error && 'status' in error) {
-        throw error; // Re-throw API errors
-      }
-
-      // Network or other errors
-      const networkError = new Error('Network error or server unavailable') as Error & ApiError;
-      networkError.status = 0;
-      throw networkError;
-    }
+  constructor() {
+    this.baseURL = `${API_BASE_URL}/auth`;
   }
 
-  async login(email: string, password: string): Promise<LoginResponse> {
+  async login(credentials: LoginRequest): Promise<BaseResponse<LoginResponse>> {
     try {
-      // Input validation
-      if (!email || !email.includes('@')) {
-        return { success: false, error: 'Please enter a valid email address' };
-      }
-
-      if (!password || password.length < 6) {
-        return { success: false, error: 'Password must be at least 6 characters long' };
-      }
-
-      const loginData: LoginRequest = {
-        email: email.trim().toLowerCase(),
-        password
-      };
-
-      const response = await this.makeRequest<LoginResponse>('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify(loginData),
-      });
-
-      return response;
-    } catch (error) {
-      const apiError = error as ApiError;
-      return {
-        success: false,
-        error: apiError.message || 'Login failed. Please try again.'
-      };
-    }
-  }
-
-  async logout(): Promise<void> {
-    try {
-      await this.makeRequest('/auth/logout', {
-        method: 'POST',
-      });
-    } catch (error) {
-      // Even if logout fails on backend, we should clear client state
-      console.error('Logout error:', error);
-    }
-  }
-
-  async getCurrentUser(): Promise<User | null> {
-    try {
-      const response = await this.makeRequest<AuthResponse>('/auth/me');
-      return response.user || null;
-    } catch (error) {
-      const apiError = error as ApiError;
-
-      // If unauthorized, user is not logged in
-      if (apiError.status === 401) {
-        return null;
-      }
-
-      throw error;
-    }
-  }
-
-  async refreshToken(): Promise<AuthResponse> {
-    return this.makeRequest<AuthResponse>('/auth/refresh', {
-      method: 'POST',
-    });
-  }
-
-  async requestPasswordReset(email: string): Promise<PasswordResetResponse> {
-    try {
-      if (!email || !email.includes('@')) {
-        return {
+      const response: AxiosResponse<BaseResponse<LoginResponse>> = await axios.post(
+        `${this.baseURL}/login`,
+        credentials,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      return response.data;
+    } catch (error: any) {
+      if (error.response) {
+        throw error.response.data;
+      } else {
+        throw {
           success: false,
-          message: '',
-          error: 'Please enter a valid email address'
+          message: 'Network error. Please check your connection.',
+          timestamp: new Date().toISOString(),
         };
       }
+    }
+  }
 
-      const resetData: PasswordResetRequest = {
-        email: email.trim().toLowerCase()
-      };
+  async refreshToken(request: RefreshTokenRequest): Promise<BaseResponse<LoginResponse>> {
+    try {
+      const response: AxiosResponse<BaseResponse<LoginResponse>> = await axios.post(
+        `${this.baseURL}/refresh`,
+        request,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      return response.data;
+    } catch (error: any) {
+      if (error.response) {
+        throw error.response.data;
+      } else {
+        throw {
+          success: false,
+          message: 'Token refresh failed',
+          timestamp: new Date().toISOString(),
+        };
+      }
+    }
+  }
 
-      const response = await this.makeRequest<PasswordResetResponse>('/auth/reset-password', {
-        method: 'POST',
-        body: JSON.stringify(resetData),
-      });
-
-      return response;
-    } catch (error) {
-      const apiError = error as ApiError;
+  async logout(): Promise<BaseResponse<string>> {
+    try {
+      const token = localStorage.getItem('token');
+      const response: AxiosResponse<BaseResponse<string>> = await axios.post(
+        `${this.baseURL}/logout`,
+        {},
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      return response.data;
+    } catch (error: any) {
+      // Even if logout fails on server, we should clear local storage
       return {
-        success: false,
-        message: '',
-        error: apiError.message || 'Failed to send reset email. Please try again.'
+        success: true,
+        message: 'Logged out locally',
+        timestamp: new Date().toISOString(),
       };
     }
   }
 
-  async changePassword(passwordData: ChangePasswordRequest): Promise<AuthResponse> {
+  async getCurrentUser(): Promise<BaseResponse<any>> {
     try {
-      if (!passwordData.currentPassword) {
-        throw new Error('Current password is required');
+      const token = localStorage.getItem('token');
+      const response: AxiosResponse<BaseResponse<any>> = await axios.get(
+        `${this.baseURL}/me`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      return response.data;
+    } catch (error: any) {
+      if (error.response) {
+        throw error.response.data;
+      } else {
+        throw {
+          success: false,
+          message: 'Failed to get user info',
+          timestamp: new Date().toISOString(),
+        };
       }
+    }
+  }
 
-      if (!passwordData.newPassword || passwordData.newPassword.length < 6) {
-        throw new Error('New password must be at least 6 characters long');
+  async changePassword(request: ChangePasswordRequest): Promise<BaseResponse<string>> {
+    try {
+      const token = localStorage.getItem('token');
+      const response: AxiosResponse<BaseResponse<string>> = await axios.post(
+        `${this.baseURL}/change-password`,
+        request,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      return response.data;
+    } catch (error: any) {
+      if (error.response) {
+        throw error.response.data;
+      } else {
+        throw {
+          success: false,
+          message: 'Password change failed',
+          timestamp: new Date().toISOString(),
+        };
       }
+    }
+  }
 
-      return this.makeRequest<AuthResponse>('/auth/change-password', {
-        method: 'PUT',
-        body: JSON.stringify(passwordData),
-      });
+  async validateToken(): Promise<BaseResponse<boolean>> {
+    try {
+      const token = localStorage.getItem('token');
+      const response: AxiosResponse<BaseResponse<boolean>> = await axios.get(
+        `${this.baseURL}/validate`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      return response.data;
+    } catch (error: any) {
+      if (error.response) {
+        throw error.response.data;
+      } else {
+        throw {
+          success: false,
+          message: 'Token validation failed',
+          timestamp: new Date().toISOString(),
+        };
+      }
+    }
+  }
+
+  // Utility methods
+  getToken(): string | null {
+    return localStorage.getItem('token');
+  }
+
+  getRefreshToken(): string | null {
+    return localStorage.getItem('refreshToken');
+  }
+
+  isTokenExpired(): boolean {
+    const token = this.getToken();
+    if (!token) return true;
+
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const currentTime = Date.now() / 1000;
+      return payload.exp < currentTime;
     } catch (error) {
-      const apiError = error as ApiError;
-      throw new Error(apiError.message || 'Failed to change password');
+      return true;
     }
   }
 
-  async verifyEmail(token: string): Promise<AuthResponse> {
-    return this.makeRequest<AuthResponse>(`/auth/verify-email/${token}`, {
-      method: 'POST',
-    });
-  }
-
-  // Utility method to check if user is authenticated
-  async isAuthenticated(): Promise<boolean> {
-    try {
-      const user = await this.getCurrentUser();
-      return !!user;
-    } catch {
-      return false;
-    }
+  clearAuthData(): void {
+    localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('user');
   }
 }
 
-export const authService = new AuthService();
-
-export type { LoginRequest };
+const authServiceInstance = new AuthService();
+export { authServiceInstance as authService };
+export default authServiceInstance;
