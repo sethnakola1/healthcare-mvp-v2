@@ -1,49 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from './AuthContext';
+// src/components/Login.tsx
+import React, { useState, FormEvent } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { UserRole, getRoleColor } from '../utils/auth.util';
 
-interface LoginForm {
+interface LoginFormData {
   email: string;
   password: string;
 }
 
 const Login: React.FC = () => {
-  const { authState, login, clearError } = useAuth();
-  const [formData, setFormData] = useState<LoginForm>({
+  const { login, authState } = useAuth();
+  const [formData, setFormData] = useState<LoginFormData>({
     email: '',
     password: '',
   });
+  const [error, setError] = useState<string>('');
   const [showPassword, setShowPassword] = useState(false);
-  const [validationErrors, setValidationErrors] = useState<Partial<LoginForm>>({});
-
-  // Clear errors when component mounts or form data changes
-  useEffect(() => {
-    clearError();
-  }, [clearError]);
-
-  useEffect(() => {
-    if (formData.email || formData.password) {
-      setValidationErrors({});
-    }
-  }, [formData]);
-
-  const validateForm = (): boolean => {
-    const errors: Partial<LoginForm> = {};
-
-    if (!formData.email.trim()) {
-      errors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      errors.email = 'Please enter a valid email address';
-    }
-
-    if (!formData.password) {
-      errors.password = 'Password is required';
-    } else if (formData.password.length < 8) {
-      errors.password = 'Password must be at least 8 characters long';
-    }
-
-    setValidationErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -51,182 +23,259 @@ const Login: React.FC = () => {
       ...prev,
       [name]: value,
     }));
+    // Clear error when user starts typing
+    if (error) setError('');
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    setError('');
 
-    if (!validateForm()) {
+    if (!formData.email || !formData.password) {
+      setError('Please enter both email and password');
       return;
     }
 
     try {
-      await login(formData);
-    } catch (error) {
-      // Error is handled by the AuthContext
-      console.error('Login failed:', error);
+      await login(formData.email, formData.password);
+    } catch (err) {
+      setError((err as Error).message);
     }
   };
 
-  const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
-  };
+  const testCredentials = [
+    { email: 'sethnakola@healthhorizon.com', password: 'SuperAdmin123!', role: 'Super Admin' },
+    { email: 'admin@hospital.com', password: 'Admin123!', role: 'Hospital Admin' },
+    { email: 'doctor@hospital.com', password: 'Doctor123!', role: 'Doctor' },
+  ];
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
+    <div style={{
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '20px'
+    }}>
+      <div style={{
+        background: 'white',
+        borderRadius: '12px',
+        boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
+        padding: '40px',
+        width: '100%',
+        maxWidth: '400px'
+      }}>
         {/* Header */}
-        <div className="text-center">
-          <div className="mx-auto h-12 w-12 bg-indigo-600 rounded-lg flex items-center justify-center">
-            <svg className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
-            Welcome to HealthHorizon
-          </h2>
-          <p className="mt-2 text-sm text-gray-600">
-            Sign in to your account to continue
+        <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+          <h1 style={{
+            color: '#2D3748',
+            fontSize: '28px',
+            fontWeight: 'bold',
+            margin: '0 0 8px 0'
+          }}>
+            HealthHorizon
+          </h1>
+          <p style={{
+            color: '#718096',
+            fontSize: '16px',
+            margin: 0
+          }}>
+            Healthcare Management System
           </p>
         </div>
 
         {/* Login Form */}
-        <form className="mt-8 space-y-6 bg-white p-8 rounded-xl shadow-lg" onSubmit={handleSubmit}>
-          {/* Global Error Message */}
-          {authState.error && (
-            <div className="bg-red-50 border border-red-200 rounded-md p-4">
-              <div className="flex">
-                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-                <div className="ml-3">
-                  <p className="text-sm text-red-800">{authState.error}</p>
-                </div>
-              </div>
+        <form onSubmit={handleSubmit} style={{ marginBottom: '30px' }}>
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{
+              display: 'block',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#374151',
+              marginBottom: '6px'
+            }}>
+              Email Address
+            </label>
+            <input
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleInputChange}
+              placeholder="Enter your email"
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: '2px solid #E5E7EB',
+                borderRadius: '8px',
+                fontSize: '16px',
+                outline: 'none',
+                transition: 'border-color 0.2s',
+                boxSizing: 'border-box'
+              }}
+              onFocus={(e) => e.target.style.borderColor = '#667eea'}
+              onBlur={(e) => e.target.style.borderColor = '#E5E7EB'}
+            />
+          </div>
+
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{
+              display: 'block',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#374151',
+              marginBottom: '6px'
+            }}>
+              Password
+            </label>
+            <div style={{ position: 'relative' }}>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                name="password"
+                value={formData.password}
+                onChange={handleInputChange}
+                placeholder="Enter your password"
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  paddingRight: '48px',
+                  border: '2px solid #E5E7EB',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  outline: 'none',
+                  transition: 'border-color 0.2s',
+                  boxSizing: 'border-box'
+                }}
+                onFocus={(e) => e.target.style.borderColor = '#667eea'}
+                onBlur={(e) => e.target.style.borderColor = '#E5E7EB'}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: 'absolute',
+                  right: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  color: '#9CA3AF',
+                  cursor: 'pointer',
+                  fontSize: '14px'
+                }}
+              >
+                {showPassword ? '👁️' : '👁️‍🗨️'}
+              </button>
+            </div>
+          </div>
+
+          {error && (
+            <div style={{
+              background: '#FEE2E2',
+              color: '#DC2626',
+              padding: '12px',
+              borderRadius: '8px',
+              fontSize: '14px',
+              marginBottom: '20px',
+              border: '1px solid #FECACA'
+            }}>
+              {error}
             </div>
           )}
 
-          <div className="space-y-4">
-            {/* Email Field */}
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                Email Address
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                value={formData.email}
-                onChange={handleInputChange}
-                className={`appearance-none rounded-lg relative block w-full px-3 py-3 border ${
-                  validationErrors.email ? 'border-red-300' : 'border-gray-300'
-                } placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm transition-colors duration-200`}
-                placeholder="Enter your email"
-                disabled={authState.isLoading}
-              />
-              {validationErrors.email && (
-                <p className="mt-1 text-sm text-red-600">{validationErrors.email}</p>
-              )}
-            </div>
-
-            {/* Password Field */}
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                Password
-              </label>
-              <div className="relative">
-                <input
-                  id="password"
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  required
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  className={`appearance-none rounded-lg relative block w-full px-3 py-3 pr-12 border ${
-                    validationErrors.password ? 'border-red-300' : 'border-gray-300'
-                  } placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm transition-colors duration-200`}
-                  placeholder="Enter your password"
-                  disabled={authState.isLoading}
-                />
-                <button
-                  type="button"
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  onClick={togglePasswordVisibility}
-                  disabled={authState.isLoading}
-                >
-                  {showPassword ? (
-                    <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
-                    </svg>
-                  ) : (
-                    <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.543 7-1.275 4.057-5.065 7-9.543 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                  )}
-                </button>
-              </div>
-              {validationErrors.password && (
-                <p className="mt-1 text-sm text-red-600">{validationErrors.password}</p>
-              )}
-            </div>
-          </div>
-
-          {/* Submit Button */}
-          <div>
-            <button
-              type="submit"
-              disabled={authState.isLoading}
-              className={`group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white ${
-                authState.isLoading
-                  ? 'bg-gray-400 cursor-not-allowed'
-                  : 'bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500'
-              } transition-colors duration-200`}
-            >
-              {authState.isLoading ? (
-                <div className="flex items-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Signing in...
-                </div>
-              ) : (
-                <>
-                  <span className="absolute left-0 inset-y-0 flex items-center pl-3">
-                    <svg className="h-5 w-5 text-indigo-500 group-hover:text-indigo-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-                    </svg>
-                  </span>
-                  Sign in
-                </>
-              )}
-            </button>
-          </div>
-
-          {/* Demo Credentials */}
-          <div className="text-center">
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <p className="text-xs text-gray-600 mb-2">Demo Credentials:</p>
-              <div className="text-xs text-gray-700 space-y-1">
-                <p><strong>Super Admin:</strong> sethnakola@healthhorizon.com / SuperAdmin123!</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Footer Links */}
-          <div className="text-center space-y-2">
-            <a href="#" className="text-sm text-indigo-600 hover:text-indigo-500">
-              Forgot your password?
-            </a>
-            <p className="text-xs text-gray-500">
-              Need an account? Contact your system administrator.
-            </p>
-          </div>
+          <button
+            type="submit"
+            disabled={authState.isLoading}
+            style={{
+              width: '100%',
+              background: authState.isLoading ? '#9CA3AF' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '14px',
+              fontSize: '16px',
+              fontWeight: '600',
+              cursor: authState.isLoading ? 'not-allowed' : 'pointer',
+              transition: 'all 0.2s',
+              opacity: authState.isLoading ? 0.7 : 1
+            }}
+          >
+            {authState.isLoading ? 'Signing In...' : 'Sign In'}
+          </button>
         </form>
+
+        {/* Test Credentials */}
+        <div style={{
+          borderTop: '1px solid #E5E7EB',
+          paddingTop: '20px'
+        }}>
+          <p style={{
+            fontSize: '14px',
+            color: '#6B7280',
+            textAlign: 'center',
+            marginBottom: '15px',
+            fontWeight: '500'
+          }}>
+            Test Credentials
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {testCredentials.map((cred, index) => (
+              <button
+                key={index}
+                type="button"
+                onClick={() => setFormData({ email: cred.email, password: cred.password })}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid #E5E7EB',
+                  borderRadius: '6px',
+                  padding: '8px 12px',
+                  fontSize: '12px',
+                  color: '#374151',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#F9FAFB';
+                  e.currentTarget.style.borderColor = '#D1D5DB';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.borderColor = '#E5E7EB';
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>{cred.email}</span>
+                  <span style={{
+                    background: getRoleColor(cred.role as UserRole),
+                    color: 'white',
+                    padding: '2px 6px',
+                    borderRadius: '4px',
+                    fontSize: '10px'
+                  }}>
+                    {cred.role}
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div style={{
+          textAlign: 'center',
+          marginTop: '30px',
+          paddingTop: '20px',
+          borderTop: '1px solid #E5E7EB'
+        }}>
+          <p style={{
+            fontSize: '12px',
+            color: '#9CA3AF',
+            margin: 0
+          }}>
+            © 2025 HealthHorizon. Healthcare Management Platform.
+          </p>
+        </div>
       </div>
     </div>
   );

@@ -1,197 +1,342 @@
 // src/components/Dashboard.tsx
-import React from 'react';
-import { User } from '../contexts/AuthContext';
-import { getRoleColor, getRoleDisplayName } from '../config/constants';
-import './Dashboard.css';
+import React, { useEffect, useState } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { UserRole, getRoleColor, getRoleDisplayName, formatUserName } from '../utils/auth.util';
 
-interface DashboardProps {
-  user: User;
+interface DashboardStats {
+  totalPatients?: number;
+  totalAppointments?: number;
+  totalHospitals?: number;
+  todayAppointments?: number;
+  revenue?: number;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ user }) => {
-  const roleColor = getRoleColor(user.role);
-  const roleDisplayName = getRoleDisplayName(user.role);
+const Dashboard: React.FC = () => {
+  const { authState, logout } = useAuth();
+  const [stats, setStats] = useState<DashboardStats>({});
+  const [loading, setLoading] = useState(true);
 
-  // Get role-specific dashboard content
-  const getDashboardContent = () => {
-    switch (user.role) {
-      case 'SUPER_ADMIN':
-        return (
-          <div className="dashboard-content">
-            <div className="stats-grid">
-              <div className="stat-card">
-                <h3>Total Users</h3>
-                <p className="stat-number">156</p>
-                <span className="stat-change positive">+12% from last month</span>
-              </div>
-              <div className="stat-card">
-                <h3>Active Hospitals</h3>
-                <p className="stat-number">24</p>
-                <span className="stat-change positive">+8% from last month</span>
-              </div>
-              <div className="stat-card">
-                <h3>Total Revenue</h3>
-                <p className="stat-number">$125,650</p>
-                <span className="stat-change positive">+15% from last month</span>
-              </div>
-              <div className="stat-card">
-                <h3>System Health</h3>
-                <p className="stat-number">99.9%</p>
-                <span className="stat-change neutral">Uptime</span>
-              </div>
-            </div>
-          </div>
-        );
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        // Simulate API call based on user role
+        setTimeout(() => {
+          const mockStats = generateMockStats(authState.user?.role);
+          setStats(mockStats);
+          setLoading(false);
+        }, 1000);
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+        setLoading(false);
+      }
+    };
 
-      case 'HOSPITAL_ADMIN':
-        return (
-          <div className="dashboard-content">
-            <div className="stats-grid">
-              <div className="stat-card">
-                <h3>Total Patients</h3>
-                <p className="stat-number">1,247</p>
-                <span className="stat-change positive">+5% from last month</span>
-              </div>
-              <div className="stat-card">
-                <h3>Today's Appointments</h3>
-                <p className="stat-number">48</p>
-                <span className="stat-change neutral">12 pending</span>
-              </div>
-              <div className="stat-card">
-                <h3>Active Doctors</h3>
-                <p className="stat-number">32</p>
-                <span className="stat-change positive">+2 new this month</span>
-              </div>
-              <div className="stat-card">
-                <h3>Revenue This Month</h3>
-                <p className="stat-number">$89,450</p>
-                <span className="stat-change positive">+12% from last month</span>
-              </div>
-            </div>
-          </div>
-        );
+    if (authState.user) {
+      fetchDashboardData();
+    }
+  }, [authState.user]);
 
-      case 'DOCTOR':
-        return (
-          <div className="dashboard-content">
-            <div className="stats-grid">
-              <div className="stat-card">
-                <h3>Today's Appointments</h3>
-                <p className="stat-number">12</p>
-                <span className="stat-change neutral">3 completed</span>
-              </div>
-              <div className="stat-card">
-                <h3>Total Patients</h3>
-                <p className="stat-number">358</p>
-                <span className="stat-change positive">+8 new this month</span>
-              </div>
-              <div className="stat-card">
-                <h3>Pending Reports</h3>
-                <p className="stat-number">5</p>
-                <span className="stat-change warning">Need attention</span>
-              </div>
-              <div className="stat-card">
-                <h3>Next Appointment</h3>
-                <p className="stat-number">2:30 PM</p>
-                <span className="stat-change neutral">John Doe</span>
-              </div>
-            </div>
-          </div>
-        );
-
-      case 'PATIENT':
-        return (
-          <div className="dashboard-content">
-            <div className="stats-grid">
-              <div className="stat-card">
-                <h3>Upcoming Appointments</h3>
-                <p className="stat-number">2</p>
-                <span className="stat-change neutral">Next: Tomorrow 10:00 AM</span>
-              </div>
-              <div className="stat-card">
-                <h3>Medical Records</h3>
-                <p className="stat-number">15</p>
-                <span className="stat-change positive">Updated last week</span>
-              </div>
-              <div className="stat-card">
-                <h3>Prescriptions</h3>
-                <p className="stat-number">3</p>
-                <span className="stat-change warning">1 expiring soon</span>
-              </div>
-              <div className="stat-card">
-                <h3>Outstanding Bills</h3>
-                <p className="stat-number">$245</p>
-                <span className="stat-change warning">Due in 5 days</span>
-              </div>
-            </div>
-          </div>
-        );
-
+  const generateMockStats = (role?: UserRole): DashboardStats => {
+    switch (role) {
+      case UserRole.SUPER_ADMIN:
+        return {
+          totalHospitals: 127,
+          totalPatients: 15420,
+          totalAppointments: 2340,
+          revenue: 1250000
+        };
+      case UserRole.HOSPITAL_ADMIN:
+        return {
+          totalPatients: 1240,
+          totalAppointments: 180,
+          todayAppointments: 24,
+          revenue: 89500
+        };
+      case UserRole.DOCTOR:
+        return {
+          totalPatients: 340,
+          todayAppointments: 8,
+          totalAppointments: 45
+        };
+      case UserRole.NURSE:
+        return {
+          totalPatients: 180,
+          todayAppointments: 12
+        };
       default:
-        return (
-          <div className="dashboard-content">
-            <div className="welcome-card">
-              <h3>Welcome to Healthcare MVP</h3>
-              <p>Your role-specific dashboard is being prepared.</p>
-            </div>
-          </div>
-        );
+        return {};
     }
   };
 
-  return (
-    <div className="dashboard">
-      <div className="dashboard-header">
-        <div className="welcome-section">
-          <h1>Welcome back, {user.firstName}!</h1>
-          <p className="user-details">
-            <span className="role-badge" style={{ backgroundColor: roleColor }}>
-              {roleDisplayName}
-            </span>
-            {user.territory && <span className="territory">Territory: {user.territory}</span>}
+  const renderStatCard = (title: string, value: string | number, icon: string, color: string) => (
+    <div style={{
+      background: 'white',
+      borderRadius: '12px',
+      padding: '24px',
+      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
+      border: '1px solid #E5E7EB',
+      transition: 'transform 0.2s',
+      cursor: 'pointer'
+    }}
+    onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+    onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0px)'}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <p style={{ margin: 0, fontSize: '14px', color: '#6B7280', fontWeight: '500' }}>
+            {title}
+          </p>
+          <p style={{
+            margin: '8px 0 0 0',
+            fontSize: '32px',
+            fontWeight: 'bold',
+            color: '#1F2937'
+          }}>
+            {typeof value === 'number' ? value.toLocaleString() : value}
           </p>
         </div>
-
-        {/* Quick Actions */}
-        <div className="quick-actions">
-          <button className="quick-action-btn primary">
-            {user.role === 'PATIENT' ? 'Book Appointment' : 'New Record'}
-          </button>
-          <button className="quick-action-btn secondary">
-            {user.role === 'DOCTOR' ? 'View Schedule' : 'Reports'}
-          </button>
-        </div>
-      </div>
-
-      {getDashboardContent()}
-
-      {/* Recent Activity */}
-      <div className="recent-activity">
-        <h2>Recent Activity</h2>
-        <div className="activity-list">
-          <div className="activity-item">
-            <div className="activity-icon">📋</div>
-            <div className="activity-content">
-              <p className="activity-title">New patient registered</p>
-              <p className="activity-time">2 hours ago</p>
-            </div>
-          </div>
-          <div className="activity-item">
-            <div className="activity-icon">📅</div>
-            <div className="activity-content">
-              <p className="activity-title">Appointment scheduled</p>
-              <p className="activity-time">4 hours ago</p>
-            </div>
-          </div>
-          <div className="activity-item">
-            <div className="activity-icon">💊</div>
-            <div className="activity-content">
-              <p className="activity-title">Prescription updated</p>
-              <p className="activity-time">1 day ago</p>
-            </div>
-          </div>
+        <div style={{
+          width: '48px',
+          height: '48px',
+          borderRadius: '12px',
+          background: `${color}20`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '24px'
+        }}>
+          {icon}
         </div>
       </div>
     </div>
   );
+
+  const renderQuickActions = () => {
+    const actions = getQuickActions(authState.user?.role);
+
+    return (
+      <div style={{
+        background: 'white',
+        borderRadius: '12px',
+        padding: '24px',
+        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
+        border: '1px solid #E5E7EB'
+      }}>
+        <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600', color: '#1F2937' }}>
+          Quick Actions
+        </h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {actions.map((action, index) => (
+            <button
+              key={index}
+              onClick={action.onClick}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                padding: '12px 16px',
+                background: 'transparent',
+                border: '1px solid #E5E7EB',
+                borderRadius: '8px',
+                fontSize: '14px',
+                color: '#374151',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                textAlign: 'left'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#F9FAFB';
+                e.currentTarget.style.borderColor = action.color;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.borderColor = '#E5E7EB';
+              }}
+            >
+              <span style={{ fontSize: '18px' }}>{action.icon}</span>
+              <span style={{ fontWeight: '500' }}>{action.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const getQuickActions = (role?: UserRole) => {
+    const baseActions = [
+      { icon: '👤', label: 'View Profile', color: '#6366F1', onClick: () => console.log('View Profile') },
+      { icon: '🔧', label: 'Settings', color: '#8B5CF6', onClick: () => console.log('Settings') },
+    ];
+
+    switch (role) {
+      case UserRole.SUPER_ADMIN:
+        return [
+          { icon: '🏥', label: 'Manage Hospitals', color: '#EF4444', onClick: () => console.log('Manage Hospitals') },
+          { icon: '👥', label: 'Manage Users', color: '#10B981', onClick: () => console.log('Manage Users') },
+          { icon: '📊', label: 'System Reports', color: '#F59E0B', onClick: () => console.log('System Reports') },
+          ...baseActions
+        ];
+      case UserRole.HOSPITAL_ADMIN:
+        return [
+          { icon: '👨‍⚕️', label: 'Manage Doctors', color: '#10B981', onClick: () => console.log('Manage Doctors') },
+          { icon: '📅', label: 'View Appointments', color: '#3B82F6', onClick: () => console.log('View Appointments') },
+          { icon: '👥', label: 'Manage Staff', color: '#8B5CF6', onClick: () => console.log('Manage Staff') },
+          ...baseActions
+        ];
+      case UserRole.DOCTOR:
+        return [
+          { icon: '📅', label: 'My Appointments', color: '#3B82F6', onClick: () => console.log('My Appointments') },
+          { icon: '👤', label: 'Patient Records', color: '#10B981', onClick: () => console.log('Patient Records') },
+          { icon: '💊', label: 'Prescriptions', color: '#F59E0B', onClick: () => console.log('Prescriptions') },
+          ...baseActions
+        ];
+      case UserRole.NURSE:
+        return [
+          { icon: '📋', label: 'Patient Care', color: '#10B981', onClick: () => console.log('Patient Care') },
+          { icon: '📅', label: 'Schedule', color: '#3B82F6', onClick: () => console.log('Schedule') },
+          ...baseActions
+        ];
+      default:
+        return baseActions;
+    }
+  };
+
+  if (!authState.user) {
+    return <div>Loading...</div>;
+  }
+
+  return (
+    <div style={{ minHeight: '100vh', background: '#F9FAFB' }}>
+      {/* Header */}
+      <header style={{
+        background: 'white',
+        borderBottom: '1px solid #E5E7EB',
+        padding: '16px 24px'
+      }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          maxWidth: '1200px',
+          margin: '0 auto'
+        }}>
+          <div>
+            <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 'bold', color: '#1F2937' }}>
+              HealthHorizon
+            </h1>
+            <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#6B7280' }}>
+              Healthcare Management System
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{ textAlign: 'right' }}>
+              <p style={{ margin: 0, fontSize: '14px', fontWeight: '500', color: '#1F2937' }}>
+                {formatUserName(authState.user.firstName, authState.user.lastName)}
+              </p>
+              <p style={{
+                margin: '2px 0 0 0',
+                fontSize: '12px',
+                color: getRoleColor(authState.user.role),
+                fontWeight: '500'
+              }}>
+                {getRoleDisplayName(authState.user.role)}
+              </p>
+            </div>
+
+            <button
+              onClick={logout}
+              style={{
+                background: '#DC2626',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '8px 16px',
+                fontSize: '14px',
+                cursor: 'pointer',
+                fontWeight: '500',
+                transition: 'background 0.2s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = '#B91C1C'}
+              onMouseLeave={(e) => e.currentTarget.style.background = '#DC2626'}
+            >
+              Logout
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
+        {/* Welcome Section */}
+        <div style={{ marginBottom: '32px' }}>
+          <h2 style={{
+            margin: '0 0 8px 0',
+            fontSize: '28px',
+            fontWeight: 'bold',
+            color: '#1F2937'
+          }}>
+            Welcome back, {authState.user.firstName}! 👋
+          </h2>
+          <p style={{ margin: 0, fontSize: '16px', color: '#6B7280' }}>
+            Here's what's happening in your {getRoleDisplayName(authState.user.role).toLowerCase()} dashboard today.
+          </p>
+        </div>
+
+        {/* Stats Grid */}
+        {loading ? (
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            height: '200px',
+            fontSize: '16px',
+            color: '#6B7280'
+          }}>
+            Loading dashboard data...
+          </div>
+        ) : (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+            gap: '24px',
+            marginBottom: '32px'
+          }}>
+            {stats.totalHospitals && renderStatCard('Total Hospitals', stats.totalHospitals, '🏥', '#EF4444')}
+            {stats.totalPatients && renderStatCard('Total Patients', stats.totalPatients, '👥', '#10B981')}
+            {stats.totalAppointments && renderStatCard('Total Appointments', stats.totalAppointments, '📅', '#3B82F6')}
+            {stats.todayAppointments && renderStatCard("Today's Appointments", stats.todayAppointments, '📋', '#F59E0B')}
+            {stats.revenue && renderStatCard('Revenue', `$${stats.revenue.toLocaleString()}`, '💰', '#8B5CF6')}
+          </div>
+        )}
+
+        {/* Quick Actions */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+          gap: '24px'
+        }}>
+          {renderQuickActions()}
+
+          {/* Recent Activity */}
+          <div style={{
+            background: 'white',
+            borderRadius: '12px',
+            padding: '24px',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
+            border: '1px solid #E5E7EB'
+          }}>
+            <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600', color: '#1F2937' }}>
+              Recent Activity
+            </h3>
+            <div style={{ color: '#6B7280', fontSize: '14px', textAlign: 'center', padding: '40px 0' }}>
+              No recent activity to display.
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
 };
+
+export default Dashboard;
