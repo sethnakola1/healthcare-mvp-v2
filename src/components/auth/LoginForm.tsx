@@ -1,282 +1,173 @@
-// src/components/Login.tsx
-import React, { useState, FormEvent } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
-import { UserRole } from '../../types';
-import { getRoleColor } from '../../config/constants';
+// src/components/Login.jsx
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import AuthService from '../services/auth.service';
 
-interface LoginFormData {
-  email: string;
-  password: string;
-}
-
-const Login: React.FC = () => {
-  const { login, authState } = useAuth();
-  const [formData, setFormData] = useState<LoginFormData>({
+const Login = () => {
+  const [formData, setFormData] = useState({
     email: '',
-    password: '',
+    password: ''
   });
-  const [error, setError] = useState<string>('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value,
-    }));
+  const navigate = useNavigate();
+
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
     // Clear error when user starts typing
     if (error) setError('');
   };
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
     setError('');
 
-    if (!formData.email || !formData.password) {
-      setError('Please enter both email and password');
-      return;
-    }
-
     try {
-      await login(formData.email, formData.password);
+      console.log('Attempting login with:', { email: formData.email });
+
+      const response = await AuthService.login(formData.email, formData.password);
+
+      console.log('Login successful:', response);
+
+      // Redirect based on user role
+      const user = AuthService.getUser();
+      if (user) {
+        switch (user.role) {
+          case 'SUPER_ADMIN':
+            navigate('/admin/dashboard');
+            break;
+          case 'HOSPITAL_ADMIN':
+            navigate('/hospital/dashboard');
+            break;
+          case 'DOCTOR':
+            navigate('/doctor/dashboard');
+            break;
+          case 'PATIENT':
+            navigate('/patient/dashboard');
+            break;
+          default:
+            navigate('/dashboard');
+        }
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err) {
-      setError((err as Error).message);
+      console.error('Login failed:', err);
+      setError(err.message || 'Login failed. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const testCredentials = [
-    { email: 'sethnakola@healthhorizon.com', password: 'SuperAdmin123!', role: 'Super Admin' },
-    { email: 'admin@hospital.com', password: 'Admin123!', role: 'Hospital Admin' },
-    { email: 'doctor@hospital.com', password: 'Doctor123!', role: 'Doctor' },
-  ];
+  // Quick login buttons for testing
+  const quickLogin = async (role) => {
+    const credentials = {
+      SUPER_ADMIN: { email: 'sethna.kola@healthcareplatform.com', password: 'SuperAdmin123!' }
+    };
+
+    if (credentials[role]) {
+      setFormData(credentials[role]);
+      // Auto-submit after setting credentials
+      setTimeout(() => {
+        handleSubmit({ preventDefault: () => {} });
+      }, 100);
+    }
+  };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '20px'
-    }}>
-      <div style={{
-        background: 'white',
-        borderRadius: '12px',
-        boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
-        padding: '40px',
-        width: '100%',
-        maxWidth: '400px'
-      }}>
-        {/* Header */}
-        <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-          <h1 style={{
-            color: '#2D3748',
-            fontSize: '28px',
-            fontWeight: 'bold',
-            margin: '0 0 8px 0'
-          }}>
-            HealthHorizon
-          </h1>
-          <p style={{
-            color: '#718096',
-            fontSize: '16px',
-            margin: 0
-          }}>
-            Healthcare Management System
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8">
+        <div>
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+            HealthHorizon Login
+          </h2>
+          <p className="mt-2 text-center text-sm text-gray-600">
+            Sign in to your healthcare account
           </p>
         </div>
 
-        {/* Login Form */}
-        <form onSubmit={handleSubmit} style={{ marginBottom: '30px' }}>
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{
-              display: 'block',
-              fontSize: '14px',
-              fontWeight: '500',
-              color: '#374151',
-              marginBottom: '6px'
-            }}>
-              Email Address
-            </label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleInputChange}
-              placeholder="Enter your email"
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                border: '2px solid #E5E7EB',
-                borderRadius: '8px',
-                fontSize: '16px',
-                outline: 'none',
-                transition: 'border-color 0.2s',
-                boxSizing: 'border-box'
-              }}
-              onFocus={(e) => e.target.style.borderColor = '#667eea'}
-              onBlur={(e) => e.target.style.borderColor = '#E5E7EB'}
-            />
-          </div>
-
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{
-              display: 'block',
-              fontSize: '14px',
-              fontWeight: '500',
-              color: '#374151',
-              marginBottom: '6px'
-            }}>
-              Password
-            </label>
-            <div style={{ position: 'relative' }}>
-              <input
-                type={showPassword ? 'text' : 'password'}
-                name="password"
-                value={formData.password}
-                onChange={handleInputChange}
-                placeholder="Enter your password"
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  paddingRight: '48px',
-                  border: '2px solid #E5E7EB',
-                  borderRadius: '8px',
-                  fontSize: '16px',
-                  outline: 'none',
-                  transition: 'border-color 0.2s',
-                  boxSizing: 'border-box'
-                }}
-                onFocus={(e) => e.target.style.borderColor = '#667eea'}
-                onBlur={(e) => e.target.style.borderColor = '#E5E7EB'}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                style={{
-                  position: 'absolute',
-                  right: '12px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: 'none',
-                  border: 'none',
-                  color: '#9CA3AF',
-                  cursor: 'pointer',
-                  fontSize: '14px'
-                }}
-              >
-                {showPassword ? '👁️' : '👁️‍🗨️'}
-              </button>
-            </div>
-          </div>
-
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           {error && (
-            <div style={{
-              background: '#FEE2E2',
-              color: '#DC2626',
-              padding: '12px',
-              borderRadius: '8px',
-              fontSize: '14px',
-              marginBottom: '20px',
-              border: '1px solid #FECACA'
-            }}>
-              {error}
+            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md">
+              <div className="flex">
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium">Login Error</h3>
+                  <div className="mt-2 text-sm">{error}</div>
+                </div>
+              </div>
             </div>
           )}
 
-          <button
-            type="submit"
-            disabled={authState.isLoading}
-            style={{
-              width: '100%',
-              background: authState.isLoading ? '#9CA3AF' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              padding: '14px',
-              fontSize: '16px',
-              fontWeight: '600',
-              cursor: authState.isLoading ? 'not-allowed' : 'pointer',
-              transition: 'all 0.2s',
-              opacity: authState.isLoading ? 0.7 : 1
-            }}
-          >
-            {authState.isLoading ? 'Signing In...' : 'Sign In'}
-          </button>
-        </form>
-
-        {/* Test Credentials */}
-        <div style={{
-          borderTop: '1px solid #E5E7EB',
-          paddingTop: '20px'
-        }}>
-          <p style={{
-            fontSize: '14px',
-            color: '#6B7280',
-            textAlign: 'center',
-            marginBottom: '15px',
-            fontWeight: '500'
-          }}>
-            Test Credentials
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {testCredentials.map((cred, index) => (
-              <button
-                key={index}
-                type="button"
-                onClick={() => setFormData({ email: cred.email, password: cred.password })}
-                style={{
-                  background: 'transparent',
-                  border: '1px solid #E5E7EB',
-                  borderRadius: '6px',
-                  padding: '8px 12px',
-                  fontSize: '12px',
-                  color: '#374151',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  transition: 'all 0.2s'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#F9FAFB';
-                  e.currentTarget.style.borderColor = '#D1D5DB';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'transparent';
-                  e.currentTarget.style.borderColor = '#E5E7EB';
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span>{cred.email}</span>
-                  <span style={{
-                    background: getRoleColor(cred.role as UserRole),
-                    color: 'white',
-                    padding: '2px 6px',
-                    borderRadius: '4px',
-                    fontSize: '10px'
-                  }}>
-                    {cred.role}
-                  </span>
-                </div>
-              </button>
-            ))}
+          <div className="rounded-md shadow-sm -space-y-px">
+            <div>
+              <label htmlFor="email" className="sr-only">Email address</label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                required
+                value={formData.email}
+                onChange={handleChange}
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                placeholder="Email address"
+              />
+            </div>
+            <div>
+              <label htmlFor="password" className="sr-only">Password</label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                autoComplete="current-password"
+                required
+                value={formData.password}
+                onChange={handleChange}
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                placeholder="Password"
+              />
+            </div>
           </div>
-        </div>
 
-        {/* Footer */}
-        <div style={{
-          textAlign: 'center',
-          marginTop: '30px',
-          paddingTop: '20px',
-          borderTop: '1px solid #E5E7EB'
-        }}>
-          <p style={{
-            fontSize: '12px',
-            color: '#9CA3AF',
-            margin: 0
-          }}>
-            © 2025 HealthHorizon. Healthcare Management Platform.
-          </p>
-        </div>
+          <div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Signing in...
+                </>
+              ) : (
+                'Sign in'
+              )}
+            </button>
+          </div>
+
+          {/* Quick Login for Testing */}
+          <div className="mt-6 border-t border-gray-200 pt-6">
+            <p className="text-sm text-gray-500 text-center mb-3">Quick Login (Testing)</p>
+            <div className="flex justify-center">
+              <button
+                type="button"
+                onClick={() => quickLogin('SUPER_ADMIN')}
+                className="px-4 py-2 text-sm bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200"
+              >
+                Login as Super Admin
+              </button>
+            </div>
+          </div>
+        </form>
       </div>
     </div>
   );

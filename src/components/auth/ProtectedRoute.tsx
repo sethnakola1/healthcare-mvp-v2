@@ -1,12 +1,14 @@
+// src/components/ProtectedRoute.tsx
 import React, { useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
+import { BusinessRole } from '../../types';
+import { getCurrentUser, updateActivity, validateSession } from '../../store/slices/authSlice';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-
-import { BusinessRole } from '../../types/auth.types';
-import { getCurrentUser } from '../../store/slices/authSlice';
 import { LoadingSpinner } from '../common';
-// import { LoadingSpinner } from '../common/LoadingSpinner';
+// import { useAppDispatch, useAppSelector } from '../store/hooks';
+// import { BusinessRole } from '../types/auth.types'; // Assume type
 // import { getCurrentUser, validateSession, updateActivity } from '../store/slices/authSlice';
+// import { LoadingSpinner } from './common/LoadingSpinner';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -35,20 +37,12 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       dispatch(getCurrentUser());
     }
 
-    // Set up activity tracking
-    const handleActivity = () => {
-      dispatch(updateActivity());
-    };
-
+    const handleActivity = () => dispatch(updateActivity());
     const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
-    events.forEach(event => {
-      document.addEventListener(event, handleActivity, true);
-    });
+    events.forEach((event) => document.addEventListener(event, handleActivity, true));
 
     return () => {
-      events.forEach(event => {
-        document.removeEventListener(event, handleActivity, true);
-      });
+      events.forEach((event) => document.removeEventListener(event, handleActivity, true));
     };
   }, [dispatch, isAuthenticated, location.pathname]);
 
@@ -62,23 +56,11 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to={redirectTo} state={{ from: location }} replace />;
   }
 
-  // Check role-based access
-  if (requiredRoles && requiredRoles.length > 0) {
-    const hasRequiredRole = requiredRoles.includes(user.role as unknown as BusinessRole);
-    if (!hasRequiredRole) {
-      return <Navigate to="/unauthorized" replace />;
-    }
+  if (requiredRoles && requiredRoles.length > 0 && !requiredRoles.includes(user.role as BusinessRole)) {
+    return <Navigate to="/unauthorized" replace />;
   }
 
   return <>{children}</>;
 };
 
 export default ProtectedRoute;
-
-function updateActivity(): any {
-  throw new Error('Function not implemented.');
-}
-function validateSession(): any {
-  throw new Error('Function not implemented.');
-}
-

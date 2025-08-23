@@ -1,10 +1,10 @@
 // src/utils/typeGuards.ts
 
-import { ApiResponse, ErrorResponse, User } from '../types/api.types';
-import { AppointmentDto } from '../types/appointment.types';
-import { DoctorDto } from '../types/doctor.types';
-import { HospitalDto } from '../types/hospital.types';
-import { PatientDto } from '../types/patient.types';
+import { AppointmentDto, DoctorDto, PatientDto, HospitalDto } from '../services';
+import { Appointment, Patient } from '../types';
+import { ApiResponse, BaseResponse, User } from '../types/api.types';
+import { Doctor } from '../types/doctor.types';
+
 
 /**
  * Type guard utilities for runtime type checking
@@ -20,27 +20,7 @@ export function isApiResponse<T>(obj: any): obj is ApiResponse<T> {
   );
 }
 
-export function isErrorResponse(obj: any): obj is ErrorResponse {
-  return (
-    typeof obj === 'object' &&
-    obj !== null &&
-    obj.success === false &&
-    typeof obj.errorCode === 'string' &&
-    typeof obj.message === 'string'
-  );
-}
 
-export function isUser(obj: any): obj is User {
-  return (
-    typeof obj === 'object' &&
-    obj !== null &&
-    typeof obj.id === 'string' &&
-    typeof obj.email === 'string' &&
-    typeof obj.firstName === 'string' &&
-    typeof obj.lastName === 'string' &&
-    typeof obj.role === 'string'
-  );
-}
 
 export function isAppointmentDto(obj: any): obj is AppointmentDto {
   return (
@@ -190,7 +170,7 @@ export function isPatient(obj: any): obj is Patient {
   );
 }
 
-export function isHospital(obj: any): obj is Hospital {
+export function isHospital(obj: any): obj is HospitalDto {
   return (
     typeof obj === 'object' &&
     obj !== null &&
@@ -202,6 +182,8 @@ export function isHospital(obj: any): obj is Hospital {
 }
 
 
+
+
 export function isErrorResponse(obj: any): obj is BaseResponse<any> {
   return (
     typeof obj === 'object' &&
@@ -211,6 +193,31 @@ export function isErrorResponse(obj: any): obj is BaseResponse<any> {
     'error' in obj
   );
 }
+
+
+// export function isErrorResponse(obj: any): obj is ErrorResponse {
+//   return (
+//     typeof obj === 'object' &&
+//     obj !== null &&
+//     obj.success === false &&
+//     typeof obj.errorCode === 'string' &&
+//     typeof obj.message === 'string'
+//   );
+// }
+
+
+
+// export function isUser(obj: any): obj is User {
+//   return (
+//     typeof obj === 'object' &&
+//     obj !== null &&
+//     typeof obj.id === 'string' &&
+//     typeof obj.email === 'string' &&
+//     typeof obj.firstName === 'string' &&
+//     typeof obj.lastName === 'string' &&
+//     typeof obj.role === 'string'
+//   );
+// }
 
 // Export default for module compliance
 export default {

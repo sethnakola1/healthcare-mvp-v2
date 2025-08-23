@@ -1,8 +1,12 @@
 // src/components/Dashboard.tsx
+// import { useAuth } from '../contexts/AuthContext'; // Corrected import path
+// import { UserRole, getRoleColor, getRoleDisplayName, formatUserName } from '../utils/auth.util'; // Assuming these utilities exist and paths are correct
 import React, { useEffect, useState } from 'react';
-import { useAuth } from '../contexts/AuthContext'; // Corrected import path
-import { UserRole, getRoleColor, getRoleDisplayName, formatUserName } from '../utils/auth.util'; // Assuming these utilities exist and paths are correct
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
+import { UserRole } from '../../types';
+import { getRoleColor, getRoleDisplayName } from '../../config/constants';
+import { useAppSelector } from '../../store/hooks';
 
 // Placeholder for dashboard statistics type
 interface DashboardStats {
@@ -16,10 +20,11 @@ interface DashboardStats {
 }
 
 export const Dashboard: React.FC = () => {
-  const { authState, logout, isLoading, error, clearError } = useAuth();
+  const { logout, isLoading, error } = useAuth();
   const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats>({});
   const [loading, setLoading] = useState(true);
+  const authState = useAppSelector((state) => state.auth);
 
   useEffect(() => {
     // If not authenticated, redirect to login page
@@ -33,9 +38,9 @@ export const Dashboard: React.FC = () => {
       const fetchDashboardStats = async () => {
         // Mock data for now
         setStats({
-          totalPatients: authState.user.role === UserRole.Admin ? 1500 : undefined,
-          totalDoctors: authState.user.role === UserRole.Admin ? 50 : undefined,
-          upcomingAppointments: authState.user.role === UserRole.Doctor ? 5 : undefined,
+ totalPatients: authState.user?.role === UserRole.ADMIN ? 1500 : undefined,
+ totalDoctors: authState.user?.role === UserRole.ADMIN ? 50 : undefined,
+ upcomingAppointments: authState.user?.role === UserRole.DOCTOR ? 5 : undefined,
         });
       };
       fetchDashboardStats();
@@ -134,3 +139,7 @@ export const Dashboard: React.FC = () => {
     </div>
   );
 };
+
+function formatUserName(user: any) {
+  throw new Error('Function not implemented.');
+}
