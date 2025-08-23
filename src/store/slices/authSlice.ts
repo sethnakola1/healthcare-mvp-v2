@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
-import { authService } from '../services/auth.service';
+import { authService } from '../../services/auth.service';
 import Cookies from 'js-cookie';
 
 // Types

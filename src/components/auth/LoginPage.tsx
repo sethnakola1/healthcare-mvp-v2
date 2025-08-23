@@ -1,17 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+
+import './auth.css';
 import { useAuth } from '../../contexts/AuthContext';
-import './Auth.css';
+
+interface LoginFormData {
+  email: string;
+  password: string;
+}
 
 const LoginPage: React.FC = () => {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<LoginFormData>({
     email: '',
-    password: '',
+    password: ''
   });
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  const { login, isAuthenticated, error, loading, clearError } = useAuth();
+  const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   // Redirect if already authenticated
@@ -21,65 +28,55 @@ const LoginPage: React.FC = () => {
     }
   }, [isAuthenticated, navigate]);
 
-  // Clear errors when component unmounts
-  useEffect(() => {
-    return () => {
-      clearError();
-    };
-  }, [clearError]);
-
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value,
+      [name]: value
     }));
-
     // Clear error when user starts typing
-    if (error) {
-      clearError();
-    }
+    if (error) setError('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setLoading(true);
+    setError('');
 
     try {
       await login(formData.email, formData.password);
-      // Navigation will happen automatically via useEffect when isAuthenticated changes
-    } catch (err) {
+      navigate('/dashboard');
+    } catch (err: any) {
       console.error('Login failed:', err);
-      // Error is handled by AuthContext
+      setError(err.message || 'Login failed. Please try again.');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const isFormValid = formData.email.trim() !== '' && formData.password.trim() !== '';
+  // Quick login buttons for testing
+  const quickLogin = async (role: 'SUPER_ADMIN') => {
+    const credentials = {
+      SUPER_ADMIN: { email: 'sethna.kola@healthcareplatform.com', password: 'SuperAdmin123!' }
+    };
+
+    if (credentials[role]) {
+      setFormData(credentials[role]);
+      // Auto-submit after setting credentials
+      setTimeout(() => {
+        handleSubmit({ preventDefault: () => {} } as React.FormEvent);
+      }, 100);
+    }
+  };
 
   return (
     <div className="auth-container">
       <div className="auth-card">
         <div className="auth-header">
-          <h1>HealthHorizon</h1>
-          <h2>Welcome Back</h2>
-          <p>Sign in to your healthcare management account</p>
+          <h1>Healthcare MVP</h1>
+          <h2>Sign In</h2>
+          <p>Access your healthcare management system</p>
         </div>
-
-        {error && (
-          <div className="error-alert">
-            <span className="error-icon">⚠️</span>
-            <span>{error}</span>
-            <button
-              onClick={clearError}
-              className="error-close"
-              aria-label="Close error"
-            >
-              ×
-            </button>
-          </div>
-        )}
 
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-group">
@@ -91,16 +88,14 @@ const LoginPage: React.FC = () => {
               value={formData.email}
               onChange={handleInputChange}
               placeholder="Enter your email"
-              className="form-input"
               required
               autoComplete="email"
-              disabled={loading || isLoading}
             />
           </div>
 
           <div className="form-group">
             <label htmlFor="password">Password</label>
-            <div className="password-input-container">
+            <div className="password-input">
               <input
                 id="password"
                 name="password"
@@ -108,62 +103,64 @@ const LoginPage: React.FC = () => {
                 value={formData.password}
                 onChange={handleInputChange}
                 placeholder="Enter your password"
-                className="form-input"
                 required
                 autoComplete="current-password"
-                disabled={loading || isLoading}
               />
               <button
                 type="button"
-                onClick={() => setShowPassword(!showPassword)}
                 className="password-toggle"
-                disabled={loading || isLoading}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                onClick={() => setShowPassword(!showPassword)}
               >
-                {showPassword ? '👁️‍🗨️' : '👁️'}
+                {showPassword ? '👁️' : '👁️‍🗨️'}
               </button>
             </div>
           </div>
 
+          {error && (
+            <div className="error-message">
+              <span>⚠️ {error}</span>
+            </div>
+          )}
+
           <button
             type="submit"
-            className={`auth-button ${(loading || isLoading || !isFormValid) ? 'disabled' : ''}`}
-            disabled={loading || isLoading || !isFormValid}
+            disabled={loading}
+            className="auth-button primary"
           >
-            {loading || isLoading ? (
-              <span className="loading-spinner">
-                <span className="spinner"></span>
+            {loading ? (
+              <>
+                <span className="spinner small"></span>
                 Signing In...
-              </span>
+              </>
             ) : (
               'Sign In'
             )}
           </button>
         </form>
 
-        <div className="auth-footer">
-          <p>
-            Don't have an account?{' '}
-            <Link to="/register" className="auth-link">
-              Register here
-            </Link>
-          </p>
-          <p>
-            <Link to="/forgot-password" className="auth-link">
-              Forgot your password?
-            </Link>
-          </p>
+        <div className="auth-divider">
+          <span>or</span>
         </div>
 
-        <div className="demo-credentials">
-          <h3>Demo Credentials</h3>
-          <div className="demo-info">
-            <strong>Super Admin:</strong>
-            <br />
-            Email: sethnakola@healthhorizon.com
-            <br />
-            Password: SuperAdmin123!
-          </div>
+        <div className="quick-login-section">
+          <h3>Quick Login (Development)</h3>
+          <button
+            type="button"
+            onClick={() => quickLogin('SUPER_ADMIN')}
+            className="auth-button secondary"
+            disabled={loading}
+          >
+            Login as Super Admin
+          </button>
+        </div>
+
+        <div className="auth-links">
+          <p>
+            Don't have an account? <Link to="/register">Register here</Link>
+          </p>
+          <p>
+            <Link to="/forgot-password">Forgot your password?</Link>
+          </p>
         </div>
       </div>
     </div>

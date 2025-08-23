@@ -1,16 +1,19 @@
-import axios, { AxiosResponse } from 'axios';
-import Cookies from 'js-cookie';
+// Auth Service for Healthcare MVP
+// Integrates with Spring Boot backend
 
-// API Base URL - matches your Spring Boot server
+import { User } from "../types";
+
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
 
-// Types for API responses (matching your backend DTOs)
 export interface LoginRequest {
   email: string;
   password: string;
 }
 
 export interface LoginResponse {
+  success: any;
+  data: { [x: string]: any; accessToken: any; refreshToken: any; };
+  message: string;
   accessToken: string;
   refreshToken: string;
   tokenType: string;
@@ -35,278 +38,178 @@ export interface RegisterRequest {
   role: 'SUPER_ADMIN' | 'TECH_ADVISOR';
 }
 
-export interface BaseResponse<T> {
+export interface UserInfo {
+  success: any;
+  data: User;
+  userId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  username: string;
+  role: string;
+  roleDisplayName: string;
+  isActive: boolean;
+  emailVerified: boolean;
+  phoneNumber?: string;
+  territory?: string;
+  partnerCode?: string;
+  lastLogin?: string;
+  createdAt?: string;
+}
+
+export interface ApiResponse<T> {
   success: boolean;
   message: string;
-  errorCode?: string;
-  data: T;
+  data?: T;
   error?: string;
+  errorCode?: string;
   timestamp: string;
-  path?: string;
 }
-
-export interface RefreshTokenRequest {
-  refreshToken: string;
-}
-
-// Configure axios defaults
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Request interceptor to add authorization header
-apiClient.interceptors.request.use(
-  (config) => {
-    const token = Cookies.get('access_token');
-    if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
-
-// Response interceptor to handle token refresh
-apiClient.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
-
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-
-      try {
-        const refreshToken = Cookies.get('refresh_token');
-        if (refreshToken) {
-          const refreshResponse = await authService.refreshToken(refreshToken);
-          if (refreshResponse.success) {
-            const newToken = refreshResponse.data.accessToken;
-            Cookies.set('access_token', newToken, { expires: 1 });
-
-            // Retry original request with new token
-            originalRequest.headers.Authorization = `Bearer ${newToken}`;
-            return apiClient(originalRequest);
-          }
-        }
-      } catch (refreshError) {
-        // Refresh failed, redirect to login
-        Cookies.remove('access_token');
-        Cookies.remove('refresh_token');
-        window.location.href = '/login';
-        return Promise.reject(refreshError);
-      }
-    }
-
-    return Promise.reject(error);
-  }
-);
 
 class AuthService {
-  /**
-   * Login user with email and password
-   */
-  async login(email: string, password: string): Promise<BaseResponse<LoginResponse>> {
-    try {
-      const request: LoginRequest = { email, password };
-      const response: AxiosResponse<BaseResponse<LoginResponse>> = await apiClient.post('/auth/login', request);
-      return response.data;
-    } catch (error: any) {
-      console.error('Login error:', error);
-      throw this.handleError(error);
-    }
+  private getAuthHeaders(): HeadersInit {
+    const token = localStorage.getItem('accessToken');
+    return {
+      'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` }),
+    };
   }
 
-  /**
-   * Register new user
-   */
-  async register(userData: RegisterRequest): Promise<BaseResponse<any>> {
-    try {
-      const response: AxiosResponse<BaseResponse<any>> = await apiClient.post('/auth/register', userData);
-      return response.data;
-    } catch (error: any) {
-      console.error('Registration error:', error);
-      throw this.handleError(error);
+  private async handleResponse<T>(response: Response): Promise<T> {
+    const contentType = response.headers.get('content-type');
+
+    if (!contentType || !contentType.includes('application/json')) {
+      throw new Error(`Server returned ${response.status}: ${response.statusText}`);
     }
+
+    const data: ApiResponse<T> = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || data.message || `HTTP ${response.status}`);
+    }
+
+    if (!data.success) {
+      throw new Error(data.error || data.message || 'Operation failed');
+    }
+
+    return data.data as T;
   }
 
-  /**
-   * Refresh access token
-   */
-  async refreshToken(refreshToken: string): Promise<BaseResponse<LoginResponse>> {
-    try {
-      const request: RefreshTokenRequest = { refreshToken };
-      const response: AxiosResponse<BaseResponse<LoginResponse>> = await apiClient.post('/auth/refresh', request);
-      return response.data;
-    } catch (error: any) {
-      console.error('Token refresh error:', error);
-      throw this.handleError(error);
-    }
+  async login(email: string, password: string, credentials: LoginRequest): Promise<LoginResponse> {
+    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(credentials),
+    });
+
+    return this.handleResponse<LoginResponse>(response);
   }
 
-  /**
-   * Get current user details
-   */
-  async getCurrentUser(token?: string): Promise<BaseResponse<any>> {
-    try {
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      const response: AxiosResponse<BaseResponse<any>> = await apiClient.get('/auth/me', { headers });
-      return response.data;
-    } catch (error: any) {
-      console.error('Get current user error:', error);
-      throw this.handleError(error);
-    }
+  async register(userData: RegisterRequest): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/auth/register`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(userData),
+    });
+
+    return this.handleResponse<any>(response);
   }
 
-  /**
-   * Logout user
-   */
+  async refreshToken(refreshToken: string): Promise<LoginResponse> {
+    const newRefreshToken = localStorage.getItem('refreshToken');
+
+    if (!newRefreshToken) {
+      throw new Error('No refresh token available');
+    }
+
+    const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify({ newRefreshToken }),
+    });
+
+    const newTokens = await this.handleResponse<LoginResponse>(response);
+
+    // Update stored tokens
+    localStorage.setItem('accessToken', newTokens.accessToken);
+    if (newTokens.refreshToken) {
+      localStorage.setItem('refreshToken', newTokens.refreshToken);
+    }
+
+    return newTokens;
+  }
+
+  async getCurrentUser(token: string): Promise<UserInfo> {
+    const response = await fetch(`${API_BASE_URL}/auth/me`, {
+      method: 'GET',
+      headers: this.getAuthHeaders(),
+    });
+
+    return this.handleResponse<UserInfo>(response);
+  }
+
   async logout(): Promise<void> {
     try {
-      await apiClient.post('/auth/logout');
-    } catch (error: any) {
-      console.error('Logout error:', error);
-      // Don't throw error for logout failures
+      await fetch(`${API_BASE_URL}/auth/logout`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+      });
+    } catch (err) {
+      console.error('Logout API call failed:', err);
+      // Continue with local logout even if API call fails
     }
   }
 
-  /**
-   * Change password
-   */
-  async changePassword(currentPassword: string, newPassword: string): Promise<BaseResponse<string>> {
+  async validateToken(): Promise<boolean> {
     try {
-      const request = { currentPassword, newPassword };
-      const response: AxiosResponse<BaseResponse<string>> = await apiClient.post('/auth/change-password', request);
-      return response.data;
-    } catch (error: any) {
-      console.error('Change password error:', error);
-      throw this.handleError(error);
+      const response = await fetch(`${API_BASE_URL}/auth/validate`, {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      });
+
+      const result = await this.handleResponse<boolean>(response);
+      return result;
+    } catch (err) {
+      return false;
     }
   }
 
-  /**
-   * Validate token
-   */
-  async validateToken(): Promise<BaseResponse<boolean>> {
+  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/auth/change-password`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+
+    await this.handleResponse<string>(response);
+  }
+
+  // Helper method to check if user is authenticated
+  isAuthenticated(): boolean {
+    const token = localStorage.getItem('accessToken');
+    return !!token;
+  }
+
+  // Helper method to get stored token
+  getToken(): string | null {
+    return localStorage.getItem('accessToken');
+  }
+
+  // Helper method to get user role from token (basic decode)
+  getUserRole(): string | null {
+    const token = this.getToken();
+    if (!token) return null;
+
     try {
-      const response: AxiosResponse<BaseResponse<boolean>> = await apiClient.get('/auth/validate');
-      return response.data;
-    } catch (error: any) {
-      console.error('Token validation error:', error);
-      throw this.handleError(error);
-    }
-  }
-
-  /**
-   * Request password reset
-   */
-  async requestPasswordReset(email: string): Promise<BaseResponse<string>> {
-    try {
-      const request = { email };
-      const response: AxiosResponse<BaseResponse<string>> = await apiClient.post('/auth/reset-password', request);
-      return response.data;
-    } catch (error: any) {
-      console.error('Password reset request error:', error);
-      throw this.handleError(error);
-    }
-  }
-
-  /**
-   * Confirm password reset
-   */
-  async confirmPasswordReset(token: string, newPassword: string): Promise<BaseResponse<string>> {
-    try {
-      const request = { token, newPassword };
-      const response: AxiosResponse<BaseResponse<string>> = await apiClient.post('/auth/confirm-reset', request);
-      return response.data;
-    } catch (error: any) {
-      console.error('Password reset confirmation error:', error);
-      throw this.handleError(error);
-    }
-  }
-
-  /**
-   * Check email/username availability
-   */
-  async checkAvailability(email?: string, username?: string): Promise<BaseResponse<any>> {
-    try {
-      const params = new URLSearchParams();
-      if (email) params.append('email', email);
-      if (username) params.append('username', username);
-
-      const response: AxiosResponse<BaseResponse<any>> = await apiClient.get(`/auth/registration/check-availability?${params}`);
-      return response.data;
-    } catch (error: any) {
-      console.error('Availability check error:', error);
-      throw this.handleError(error);
-    }
-  }
-
-  /**
-   * Get available roles for registration
-   */
-  async getAvailableRoles(): Promise<BaseResponse<any[]>> {
-    try {
-      const response: AxiosResponse<BaseResponse<any[]>> = await apiClient.get('/auth/registration/roles');
-      return response.data;
-    } catch (error: any) {
-      console.error('Get roles error:', error);
-      throw this.handleError(error);
-    }
-  }
-
-  /**
-   * Handle API errors consistently
-   */
-  private handleError(error: any): Error {
-    if (error.response) {
-      // Server responded with error status
-      const serverError = error.response.data;
-
-      if (serverError && typeof serverError === 'object') {
-        return new Error(serverError.message || serverError.error || 'Server error occurred');
-      } else {
-        return new Error(`Server error: ${error.response.status}`);
-      }
-    } else if (error.request) {
-      // Network error
-      return new Error('Network error. Please check your connection and try again.');
-    } else {
-      // Other error
-      return new Error(error.message || 'An unexpected error occurred');
-    }
-  }
-
-  /**
-   * Initialize Super Admin (for initial setup)
-   */
-  async initializeSuperAdmin(): Promise<BaseResponse<any>> {
-    try {
-      const response: AxiosResponse<BaseResponse<any>> = await apiClient.post('/business/super-admin/initialize');
-      return response.data;
-    } catch (error: any) {
-      console.error('Initialize super admin error:', error);
-      throw this.handleError(error);
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload.roles?.[0] || null;
+    } catch (err) {
+      console.error('Failed to decode token:', err);
+      return null;
     }
   }
 }
 
-// Export singleton instance
 export const authService = new AuthService();
-
-// Export API client for other services
-export { apiClient };
-
-// Hook to use auth context
-export const useAuth = (): AuthContextType => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
+export default AuthService;

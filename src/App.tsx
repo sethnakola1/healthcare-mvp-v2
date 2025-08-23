@@ -1,16 +1,17 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import ErrorBoundary from './components/common/ErrorBoundary';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { store } from './store/store';
 import LoginPage from './components/auth/LoginPage';
+import RegisterPage from './components/auth/RegisterPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import { AuthProvider } from './contexts/AuthContext';
-import { Dashboard } from './components/dashboard/Dashboard';
+import Dashboard from './components/dashboard/Dashboard';
+import './App.css';
 
 const App: React.FC = () => {
   return (
-    <ErrorBoundary>
+    <Provider store={store}>
       <AuthProvider>
         <Router>
           <div className="App">
@@ -37,7 +38,7 @@ const App: React.FC = () => {
           </div>
         </Router>
       </AuthProvider>
-    </ErrorBoundary>
+    </Provider>
   );
 };
 

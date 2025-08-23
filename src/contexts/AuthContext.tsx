@@ -1,43 +1,24 @@
-// src/contexts/AuthContext.tsx
-import React, { createContext, useContext, useReducer, useEffect, useState, ReactNode } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { login, logout } from '../store/slices/authSlice'; // Fixed path
-import { RootState } from '../store/store'; // Assume root state type
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { authService, LoginResponse, RegisterRequest } from '../services/auth.service';
 
-interface AuthState {
-  user: any | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  error: string | null;
+interface User {
+  userId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  roleDisplayName: string;
 }
 
-const initialState: AuthState = {
-  user: null,
-  isAuthenticated: false,
-  isLoading: false,
-  error: null,
-};
-
-const authReducer = (state: AuthState, action: any): AuthState => {
-  switch (action.type) {
-    case 'LOGIN_SUCCESS':
-      return { ...state, user: action.payload, isAuthenticated: true, error: null };
-    case 'LOGOUT':
-      return { ...initialState };
-    case 'SET_ERROR':
-      return { ...state, error: action.payload };
-    default:
-      return state;
-  }
-};
-
 interface AuthContextType {
-  user: any | null;
+  user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
+  register: (userData: RegisterRequest) => Promise<void>;
+  logout: () => void;
+  clearError: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -47,47 +28,118 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const dispatch = useDispatch<any>(); // Use any for now, or define AppDispatch
-  const reduxAuthState = useSelector((state: RootState) => state.auth);
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const [state, dispatchReducer] = useReducer(authReducer, initialState);
-  const [localLoading, setLocalLoading] = useState(false);
-  const [localError, setLocalError] = useState<string | null>(null);
-
+  // Check if user is already logged in on app startup
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      dispatchReducer({ type: 'LOGIN_SUCCESS', payload: JSON.parse(storedUser) });
-    }
+    const initializeAuth = async () => {
+      try {
+        const token = localStorage.getItem('accessToken');
+        if (token) {
+          // Validate token and get user info
+          const userInfo = await authService.getCurrentUser();
+          setUser({
+            userId: userInfo.userId,
+            email: userInfo.email,
+            firstName: userInfo.firstName,
+            lastName: userInfo.lastName,
+            role: userInfo.role,
+            roleDisplayName: userInfo.roleDisplayName
+          });
+        }
+      } catch (err) {
+        console.error('Auth initialization failed:', err);
+        // Clear invalid token
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initializeAuth();
   }, []);
 
-  const handleLogin = async (email: string, password: string) => {
-    setLocalLoading(true);
-    setLocalError(null);
+  const login = async (email: string, password: string): Promise<void> => {
+    setIsLoading(true);
+    setError(null);
+
     try {
-      await dispatch(login({ email, password })).unwrap();
-    } catch (err) {
-      setLocalError((err as Error).message);
+      const response: LoginResponse = await authService.login({ email, password });
+
+      // Store tokens
+      localStorage.setItem('accessToken', response.accessToken);
+      localStorage.setItem('refreshToken', response.refreshToken);
+
+      // Set user state
+      setUser({
+        userId: response.userId,
+        email: response.email,
+        firstName: response.firstName,
+        lastName: response.lastName,
+        role: response.role,
+        roleDisplayName: response.role.replace('_', ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())
+      });
+    } catch (err: any) {
+      setError(err.message || 'Login failed');
+      throw err;
     } finally {
-      setLocalLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const handleLogout = async () => {
-    await dispatch(logout()).unwrap();
-    dispatchReducer({ type: 'LOGOUT' });
+  const register = async (userData: RegisterRequest): Promise<void> => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await authService.register(userData);
+
+      // Auto-login after successful registration
+      await login(userData.email, userData.password);
+    } catch (err: any) {
+      setError(err.message || 'Registration failed');
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const logout = (): void => {
+    // Clear tokens
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+
+    // Clear user state
+    setUser(null);
+    setError(null);
+
+    // Call logout API (optional)
+    authService.logout().catch(console.error);
+  };
+
+  const clearError = (): void => {
+    setError(null);
   };
 
   const value: AuthContextType = {
-    user: reduxAuthState.user,
-    isAuthenticated: reduxAuthState.isAuthenticated,
-    isLoading: reduxAuthState.isLoading || localLoading,
-    error: reduxAuthState.error || localError,
-    login: handleLogin,
-    logout: handleLogout,
+    user,
+    isAuthenticated: !!user,
+    isLoading,
+    error,
+    login,
+    register,
+    logout,
+    clearError,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
 export const useAuth = (): AuthContextType => {
