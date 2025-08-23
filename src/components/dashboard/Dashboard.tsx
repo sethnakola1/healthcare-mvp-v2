@@ -1,145 +1,332 @@
-// src/components/Dashboard.tsx
-// import { useAuth } from '../contexts/AuthContext'; // Corrected import path
-// import { UserRole, getRoleColor, getRoleDisplayName, formatUserName } from '../utils/auth.util'; // Assuming these utilities exist and paths are correct
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { UserRole } from '../../types';
-import { getRoleColor, getRoleDisplayName } from '../../config/constants';
-import { useAppSelector } from '../../store/hooks';
+import { apiClient } from '../../services/auth.service';
+import './Dashboard.css';
 
-// Placeholder for dashboard statistics type
-interface DashboardStats {
-  totalPatients?: number;
-  totalDoctors?: number;
-    upcomingAppointments?: number;
-  totalAppointments?: number;
-  totalHospitals?: number;
-  todayAppointments?: number;
-  revenue?: number;
+interface DashboardData {
+  appointments?: any[];
+  bills?: any[];
+  prescriptions?: any[];
+  users?: any[];
+  systemMetrics?: Record<string, any>;
+  feedback?: any[];
+  notifications?: any[];
 }
 
-export const Dashboard: React.FC = () => {
-  const { logout, isLoading, error } = useAuth();
-  const navigate = useNavigate();
-  const [stats, setStats] = useState<DashboardStats>({});
+const Dashboard: React.FC = () => {
+  const { user, logout } = useAuth();
+  const [dashboardData, setDashboardData] = useState<DashboardData>({});
   const [loading, setLoading] = useState(true);
-  const authState = useAppSelector((state) => state.auth);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // If not authenticated, redirect to login page
-    if (!authState.isAuthenticated) {
-      navigate('/login');
-    }
-    // Fetch dashboard specific data based on user role
-    if (authState.isAuthenticated && authState.user) {
-      // Example: Fetch stats based on user role
-      // This would typically involve another service call
-      const fetchDashboardStats = async () => {
-        // Mock data for now
-        setStats({
- totalPatients: authState.user?.role === UserRole.ADMIN ? 1500 : undefined,
- totalDoctors: authState.user?.role === UserRole.ADMIN ? 50 : undefined,
- upcomingAppointments: authState.user?.role === UserRole.DOCTOR ? 5 : undefined,
-        });
-      };
-      fetchDashboardStats();
-    }
-  }, [authState.isAuthenticated, authState.user, navigate]);
+    fetchDashboardData();
+  }, [user]);
 
-  const handleLogout = async () => {
+  const fetchDashboardData = async () => {
     try {
-      await logout();
-      // Redirect handled by useEffect after authState updates
-    } catch (err) {
-      console.error("Logout failed:", err);
-      // Handle error, e.g., display a message
+      setLoading(true);
+      setError(null);
+
+      const response = await apiClient.get('/dashboard');
+      if (response.data.success) {
+        setDashboardData(response.data.data);
+      } else {
+        setError(response.data.message || 'Failed to load dashboard');
+      }
+    } catch (err: any) {
+      console.error('Dashboard fetch error:', err);
+      setError(err.response?.data?.message || 'Failed to load dashboard data');
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (isLoading) {
+  const handleLogout = () => {
+    logout();
+  };
+
+  if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <p className="text-lg font-medium">Loading dashboard...</p>
+      <div className="dashboard-loading">
+        <div className="loading-spinner">
+          <div className="spinner"></div>
+          <p>Loading dashboard...</p>
+        </div>
       </div>
     );
   }
 
-  if (!authState.isAuthenticated || !authState.user) {
-    // This case should ideally be handled by the useEffect redirect
-    return null;
+  if (error) {
+    return (
+      <div className="dashboard-error">
+        <div className="error-container">
+          <h2>Error Loading Dashboard</h2>
+          <p>{error}</p>
+          <button onClick={fetchDashboardData} className="retry-button">
+            Retry
+          </button>
+        </div>
+      </div>
+    );
   }
 
-  const userRoleColor = getRoleColor(authState.user.role);
-  const userDisplayName = formatUserName(authState.user);
-  const roleDisplayName = getRoleDisplayName(authState.user.role);
+  const renderRoleSpecificContent = () => {
+    if (!user) return null;
 
-  return (
-    <div className="min-h-screen bg-gray-100 p-6">
-      <header className="flex justify-between items-center py-4 px-6 bg-white shadow-md rounded-lg mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">
-          Welcome,{' '}
-          <span className={`font-semibold ${userRoleColor}`}>
-            {userDisplayName} ({roleDisplayName})
-          </span>
-        </h1>
-        <button
-          onClick={handleLogout}
-          className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-          disabled={isLoading}
-        >
-          {isLoading ? 'Logging out...' : 'Logout'}
-        </button>
-      </header>
+    switch (user.role) {
+      case 'SUPER_ADMIN':
+        return renderSuperAdminDashboard();
+      case 'TECH_ADVISOR':
+        return renderTechAdvisorDashboard();
+      case 'HOSPITAL_ADMIN':
+        return renderHospitalAdminDashboard();
+      case 'DOCTOR':
+        return renderDoctorDashboard();
+      case 'NURSE':
+        return renderNurseDashboard();
+      case 'RECEPTIONIST':
+        return renderReceptionistDashboard();
+      case 'PATIENT':
+        return renderPatientDashboard();
+      default:
+        return <div>Unknown role: {user.role}</div>;
+    }
+  };
 
-      {error && (
-        <div
-          className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-6"
-          role="alert"
-        >
-          <strong className="font-bold">Error:</strong>
-          <span className="block sm:inline ml-2">{error}</span>
-          <span className="absolute top-0 bottom-0 right-0 px-4 py-3" onClick={clearError}>
-            <svg
-              className="fill-current h-6 w-6 text-red-500"
-              role="button"
-              xmlns="http://www.w3.org="
-              viewBox="0 0 20 20"
-            >
-              <title>Close</title>
-              <path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z" />
-            </svg>
-          </span>
+  const renderSuperAdminDashboard = () => (
+    <div className="dashboard-content">
+      <h2>System Overview</h2>
+      <div className="metrics-grid">
+        {dashboardData.systemMetrics && Object.entries(dashboardData.systemMetrics).map(([key, value]) => (
+          <div key={key} className="metric-card">
+            <h3>{formatMetricName(key)}</h3>
+            <p className="metric-value">{String(value)}</p>
+          </div>
+        ))}
+      </div>
+
+      {dashboardData.users && (
+        <div className="users-section">
+          <h3>Recent Users</h3>
+          <div className="users-list">
+            {dashboardData.users.slice(0, 5).map((user: any) => (
+              <div key={user.businessUserId} className="user-item">
+                <span className="user-name">{user.fullName}</span>
+                <span className="user-role">{user.roleDisplayName}</span>
+                <span className="user-status">{user.isActive ? 'Active' : 'Inactive'}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  const renderTechAdvisorDashboard = () => (
+    <div className="dashboard-content">
+      <h2>Tech Advisor Dashboard</h2>
+      <div className="advisor-metrics">
+        <div className="metric-card">
+          <h3>Territory</h3>
+          <p>{user?.territory || 'Not assigned'}</p>
+        </div>
+        <div className="metric-card">
+          <h3>Partner Code</h3>
+          <p>{user?.partnerCode || 'Not generated'}</p>
+        </div>
+      </div>
+      <p>Manage hospital partnerships and technical support.</p>
+    </div>
+  );
+
+  const renderHospitalAdminDashboard = () => (
+    <div className="dashboard-content">
+      <h2>Hospital Administration</h2>
+
+      {dashboardData.appointments && (
+        <div className="appointments-section">
+          <h3>Today's Appointments ({dashboardData.appointments.length})</h3>
+          <div className="appointments-list">
+            {dashboardData.appointments.slice(0, 5).map((appointment: any) => (
+              <div key={appointment.appointmentId} className="appointment-item">
+                <div className="appointment-time">
+                  {new Date(appointment.appointmentDateTime).toLocaleTimeString()}
+                </div>
+                <div className="appointment-details">
+                  <p><strong>{appointment.patientName}</strong></p>
+                  <p>Dr. {appointment.doctorName}</p>
+                  <span className={`status ${appointment.status.toLowerCase()}`}>
+                    {appointment.statusDisplay}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
-      <main>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {stats.totalPatients !== undefined && (
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <h3 className="text-lg font-semibold text-gray-700">Total Patients</h3>
-              <p className="mt-2 text-3xl font-bold text-indigo-600">{stats.totalPatients}</p>
-            </div>
-          )}
-          {stats.totalDoctors !== undefined && (
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <h3 className="text-lg font-semibold text-gray-700">Total Doctors</h3>
-              <p className="mt-2 text-3xl font-bold text-green-600">{stats.totalDoctors}</p>
-            </div>
-          )}
-          {stats.upcomingAppointments !== undefined && (
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <h3 className="text-lg font-semibold text-gray-700">Upcoming Appointments</h3>
-              <p className="mt-2 text-3xl font-bold text-yellow-600">{stats.upcomingAppointments}</p>
-            </div>
-          )}
-          {/* Add more dashboard cards as needed */}
+      {dashboardData.bills && (
+        <div className="bills-section">
+          <h3>Recent Bills</h3>
+          <div className="bills-list">
+            {dashboardData.bills.slice(0, 3).map((bill: any) => (
+              <div key={bill.billingId} className="bill-item">
+                <span className="bill-number">{bill.billNumber}</span>
+                <span className="bill-amount">₹{bill.totalAmount}</span>
+                <span className={`payment-status ${bill.paymentStatus.toLowerCase()}`}>
+                  {bill.paymentStatus}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
+      )}
+    </div>
+  );
+
+  const renderDoctorDashboard = () => (
+    <div className="dashboard-content">
+      <h2>Doctor Dashboard</h2>
+
+      {dashboardData.appointments && (
+        <div className="appointments-section">
+          <h3>Today's Appointments ({dashboardData.appointments.length})</h3>
+          <div className="appointments-list">
+            {dashboardData.appointments.map((appointment: any) => (
+              <div key={appointment.appointmentId} className="appointment-item">
+                <div className="appointment-time">
+                  {new Date(appointment.appointmentDateTime).toLocaleTimeString()}
+                </div>
+                <div className="appointment-details">
+                  <p><strong>{appointment.patientName}</strong></p>
+                  <p>MRN: {appointment.patientMrn}</p>
+                  <p>{appointment.chiefComplaint}</p>
+                  <span className={`status ${appointment.status.toLowerCase()}`}>
+                    {appointment.statusDisplay}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {dashboardData.prescriptions && (
+        <div className="prescriptions-section">
+          <h3>Recent Prescriptions</h3>
+          <div className="prescriptions-list">
+            {dashboardData.prescriptions.slice(0, 3).map((prescription: any) => (
+              <div key={prescription.prescriptionId} className="prescription-item">
+                <span className="prescription-number">{prescription.prescriptionNumber}</span>
+                <span className="prescription-date">
+                  {new Date(prescription.prescriptionDate).toLocaleDateString()}
+                </span>
+                <span className={`prescription-status ${prescription.status.toLowerCase()}`}>
+                  {prescription.status}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  const renderNurseDashboard = () => (
+    <div className="dashboard-content">
+      <h2>Nurse Dashboard</h2>
+      <p>Manage patient care and assist with medical procedures.</p>
+    </div>
+  );
+
+  const renderReceptionistDashboard = () => (
+    <div className="dashboard-content">
+      <h2>Reception Dashboard</h2>
+      <p>Manage appointments and patient registration.</p>
+    </div>
+  );
+
+  const renderPatientDashboard = () => (
+    <div className="dashboard-content">
+      <h2>Patient Portal</h2>
+
+      {dashboardData.appointments && (
+        <div className="appointments-section">
+          <h3>My Appointments</h3>
+          <div className="appointments-list">
+            {dashboardData.appointments.map((appointment: any) => (
+              <div key={appointment.appointmentId} className="appointment-item">
+                <div className="appointment-date">
+                  {new Date(appointment.appointmentDateTime).toLocaleDateString()}
+                </div>
+                <div className="appointment-details">
+                  <p><strong>Dr. {appointment.doctorName}</strong></p>
+                  <p>{appointment.doctorSpecialization}</p>
+                  <p>{appointment.hospitalName}</p>
+                  <span className={`status ${appointment.status.toLowerCase()}`}>
+                    {appointment.statusDisplay}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {dashboardData.bills && (
+        <div className="bills-section">
+          <h3>My Bills</h3>
+          <div className="bills-list">
+            {dashboardData.bills.map((bill: any) => (
+              <div key={bill.billingId} className="bill-item">
+                <span className="bill-number">{bill.billNumber}</span>
+                <span className="bill-amount">₹{bill.totalAmount}</span>
+                <span className={`payment-status ${bill.paymentStatus.toLowerCase()}`}>
+                  {bill.paymentStatus}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  const formatMetricName = (key: string): string => {
+    return key.replace(/([A-Z])/g, ' $1')
+              .replace(/^./, str => str.toUpperCase())
+              .replace(/([a-z])([A-Z])/g, '$1 $2');
+  };
+
+  return (
+    <div className="dashboard">
+      <nav className="dashboard-nav">
+        <div className="nav-brand">
+          <h1>HealthHorizon</h1>
+        </div>
+
+        <div className="nav-user">
+          <div className="user-info">
+            <span className="user-name">{user?.fullName}</span>
+            <span className="user-role">{user?.roleDisplayName}</span>
+          </div>
+          <button onClick={handleLogout} className="logout-button">
+            Logout
+          </button>
+        </div>
+      </nav>
+
+      <main className="dashboard-main">
+        <div className="dashboard-header">
+          <h1>Welcome, {user?.firstName}!</h1>
+          <p>Role: {user?.roleDisplayName}</p>
+        </div>
+
+        {renderRoleSpecificContent()}
       </main>
     </div>
   );
 };
 
-function formatUserName(user: any) {
-  throw new Error('Function not implemented.');
-}
+export default Dashboard;

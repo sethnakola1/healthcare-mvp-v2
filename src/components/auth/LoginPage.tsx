@@ -1,81 +1,170 @@
-// src/components/auth/LoginPage.tsx (Use as default export)
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext'; // Fixed path
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
+import './Auth.css';
 
 const LoginPage: React.FC = () => {
-  const [formData, setFormData] = useState({ email: '', password: '' });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const { login } = useAuth();
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
+  const { login, isAuthenticated, error, loading, clearError } = useAuth();
   const navigate = useNavigate();
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard');
+    }
+  }, [isAuthenticated, navigate]);
+
+  // Clear errors when component unmounts
+  useEffect(() => {
+    return () => {
+      clearError();
+    };
+  }, [clearError]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value,
+    }));
+
+    // Clear error when user starts typing
+    if (error) {
+      clearError();
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError('');
+    setIsLoading(true);
+
     try {
       await login(formData.email, formData.password);
-      navigate('/dashboard'); // Redirect to dashboard on success
+      // Navigation will happen automatically via useEffect when isAuthenticated changes
     } catch (err) {
-      setError((err as Error).message || 'Login failed. Please try again.');
+      console.error('Login failed:', err);
+      // Error is handled by AuthContext
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  // Quick login for testing (align with backend roles)
-  const quickLogin = async (role: string) => {
-    const credentials: { [key: string]: { email: string; password: string } } = {
-      SUPER_ADMIN: { email: 'super@admin.com', password: 'SuperAdmin123!' },
-      // Add others
-    };
-
-    if (credentials[role]) {
-      setFormData(credentials[role]);
-      setTimeout(() => handleSubmit({ preventDefault: () => {} } as React.FormEvent), 100);
-    }
-  };
+  const isFormValid = formData.email.trim() !== '' && formData.password.trim() !== '';
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="bg-white p-8 rounded-lg shadow-md w-96">
-        <h2 className="text-2xl font-bold mb-6 text-center">Login</h2>
-        {error && <p className="text-red-500 mb-4">{error}</p>}
-        <form onSubmit={handleSubmit}>
-          <input
-            type="email"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-            placeholder="Email"
-            className="w-full p-2 mb-4 border rounded"
-            required
-          />
-          <input
-            type="password"
-            name="password"
-            value={formData.password}
-            onChange={handleChange}
-            placeholder="Password"
-            className="w-full p-2 mb-4 border rounded"
-            required
-          />
-          <button type="submit" disabled={loading} className="w-full bg-indigo-600 text-white p-2 rounded">
-            {loading ? 'Logging in...' : 'Login'}
+    <div className="auth-container">
+      <div className="auth-card">
+        <div className="auth-header">
+          <h1>HealthHorizon</h1>
+          <h2>Welcome Back</h2>
+          <p>Sign in to your healthcare management account</p>
+        </div>
+
+        {error && (
+          <div className="error-alert">
+            <span className="error-icon">⚠️</span>
+            <span>{error}</span>
+            <button
+              onClick={clearError}
+              className="error-close"
+              aria-label="Close error"
+            >
+              ×
+            </button>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="auth-form">
+          <div className="form-group">
+            <label htmlFor="email">Email Address</label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              value={formData.email}
+              onChange={handleInputChange}
+              placeholder="Enter your email"
+              className="form-input"
+              required
+              autoComplete="email"
+              disabled={loading || isLoading}
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="password">Password</label>
+            <div className="password-input-container">
+              <input
+                id="password"
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                value={formData.password}
+                onChange={handleInputChange}
+                placeholder="Enter your password"
+                className="form-input"
+                required
+                autoComplete="current-password"
+                disabled={loading || isLoading}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="password-toggle"
+                disabled={loading || isLoading}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? '👁️‍🗨️' : '👁️'}
+              </button>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            className={`auth-button ${(loading || isLoading || !isFormValid) ? 'disabled' : ''}`}
+            disabled={loading || isLoading || !isFormValid}
+          >
+            {loading || isLoading ? (
+              <span className="loading-spinner">
+                <span className="spinner"></span>
+                Signing In...
+              </span>
+            ) : (
+              'Sign In'
+            )}
           </button>
         </form>
-        {/* Quick login buttons */}
-        <button onClick={() => quickLogin('SUPER_ADMIN')} className="mt-4 w-full bg-green-500 text-white p-2 rounded">
-          Quick Login as Super Admin
-        </button>
+
+        <div className="auth-footer">
+          <p>
+            Don't have an account?{' '}
+            <Link to="/register" className="auth-link">
+              Register here
+            </Link>
+          </p>
+          <p>
+            <Link to="/forgot-password" className="auth-link">
+              Forgot your password?
+            </Link>
+          </p>
+        </div>
+
+        <div className="demo-credentials">
+          <h3>Demo Credentials</h3>
+          <div className="demo-info">
+            <strong>Super Admin:</strong>
+            <br />
+            Email: sethnakola@healthhorizon.com
+            <br />
+            Password: SuperAdmin123!
+          </div>
+        </div>
       </div>
     </div>
   );

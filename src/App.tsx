@@ -10,12 +10,13 @@ import { Dashboard } from './components/dashboard/Dashboard';
 
 const App: React.FC = () => {
   return (
-    <Provider store={store}>
+    <ErrorBoundary>
       <AuthProvider>
-        <ErrorBoundary>
-          <Router>
+        <Router>
+          <div className="App">
             <Routes>
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
               <Route
                 path="/dashboard"
                 element={
@@ -24,12 +25,19 @@ const App: React.FC = () => {
                   </ProtectedRoute>
                 }
               />
-              <Route path="/" element={<LoginPage />} /> {/* Default to login */}
+              <Route
+                path="/"
+                element={<Navigate to="/dashboard" replace />}
+              />
+              <Route
+                path="*"
+                element={<Navigate to="/dashboard" replace />}
+              />
             </Routes>
-          </Router>
-        </ErrorBoundary>
+          </div>
+        </Router>
       </AuthProvider>
-    </Provider>
+    </ErrorBoundary>
   );
 };
 

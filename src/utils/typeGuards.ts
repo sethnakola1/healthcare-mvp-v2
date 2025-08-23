@@ -1,243 +1,197 @@
-// src/utils/typeGuards.ts
-
-import { AppointmentDto, DoctorDto, PatientDto, HospitalDto } from '../services';
-import { Appointment, Patient } from '../types';
-import { ApiResponse, BaseResponse, User } from '../types/api.types';
-import { Doctor } from '../types/doctor.types';
-
+// Type guards for runtime type checking
+import { User } from '../contexts/AuthContext';
 
 /**
- * Type guard utilities for runtime type checking
+ * Check if a value is a string
  */
-
-export function isApiResponse<T>(obj: any): obj is ApiResponse<T> {
-  return (
-    typeof obj === 'object' &&
-    obj !== null &&
-    typeof obj.success === 'boolean' &&
-    typeof obj.message === 'string' &&
-    typeof obj.timestamp === 'string'
-  );
-}
-
-
-
-export function isAppointmentDto(obj: any): obj is AppointmentDto {
-  return (
-    typeof obj === 'object' &&
-    obj !== null &&
-    typeof obj.appointmentId === 'string' &&
-    typeof obj.hospitalId === 'string' &&
-    typeof obj.patientId === 'string' &&
-    typeof obj.doctorId === 'string'
-  );
-}
-
-export function isDoctorDto(obj: any): obj is DoctorDto {
-  return (
-    typeof obj === 'object' &&
-    obj !== null &&
-    typeof obj.doctorId === 'string' &&
-    typeof obj.hospitalId === 'string' &&
-    typeof obj.firstName === 'string' &&
-    typeof obj.lastName === 'string' &&
-    typeof obj.email === 'string'
-  );
-}
-
-export function isHospitalDto(obj: any): obj is HospitalDto {
-  return (
-    typeof obj === 'object' &&
-    obj !== null &&
-    typeof obj.hospitalId === 'string' &&
-    typeof obj.hospitalName === 'string' &&
-    typeof obj.hospitalCode === 'string'
-  );
-}
-
-export function isPatientDto(obj: any): obj is PatientDto {
-  return (
-    typeof obj === 'object' &&
-    obj !== null &&
-    typeof obj.patientId === 'string' &&
-    typeof obj.hospitalId === 'string' &&
-    typeof obj.firstName === 'string' &&
-    typeof obj.lastName === 'string'
-  );
-}
-
-export function isString(value: any): value is string {
+export const isString = (value: unknown): value is string => {
   return typeof value === 'string';
-}
+};
 
-export function isNumber(value: any): value is number {
+/**
+ * Check if a value is a number
+ */
+export const isNumber = (value: unknown): value is number => {
   return typeof value === 'number' && !isNaN(value);
-}
+};
 
-export function isBoolean(value: any): value is boolean {
+/**
+ * Check if a value is a boolean
+ */
+export const isBoolean = (value: unknown): value is boolean => {
   return typeof value === 'boolean';
-}
+};
 
-export function isArray<T>(value: any): value is T[] {
+/**
+ * Check if a value is an object (and not null)
+ */
+export const isObject = (value: unknown): value is Record<string, unknown> => {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+};
+
+/**
+ * Check if a value is an array
+ */
+export const isArray = (value: unknown): value is unknown[] => {
   return Array.isArray(value);
-}
+};
 
-export function isNonEmptyString(value: any): value is string {
-  return typeof value === 'string' && value.trim().length > 0;
-}
+/**
+ * Check if a value is a valid User object
+ */
+export const isUser = (value: unknown): value is User => {
+  if (!isObject(value)) return false;
 
-export function isValidEmail(value: any): value is string {
+  const obj = value as Record<string, unknown>;
+
+  return (
+    isString(obj.userId) &&
+    isString(obj.email) &&
+    isString(obj.firstName) &&
+    isString(obj.lastName) &&
+    isString(obj.role) &&
+    isBoolean(obj.isActive)
+  );
+};
+
+/**
+ * Check if a value is a valid email address
+ */
+export const isValidEmail = (value: unknown): value is string => {
   if (!isString(value)) return false;
+
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(value);
-}
+};
 
-export function isValidUUID(value: any): value is string {
+/**
+ * Check if a value is a valid UUID
+ */
+export const isValidUUID = (value: unknown): value is string => {
   if (!isString(value)) return false;
+
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   return uuidRegex.test(value);
-}
+};
 
-export function isValidDate(value: any): value is string {
+/**
+ * Check if a value is a valid phone number
+ */
+export const isValidPhoneNumber = (value: unknown): value is string => {
   if (!isString(value)) return false;
+
+  const phoneRegex = /^\+?[1-9]\d{1,14}$/;
+  return phoneRegex.test(value);
+};
+
+/**
+ * Check if a date string is a valid date
+ */
+export const isValidDate = (value: unknown): value is string => {
+  if (!isString(value)) return false;
+
   const date = new Date(value);
   return !isNaN(date.getTime());
-}
+};
 
-export function hasProperty<T extends object, K extends string>(
-  obj: T,
-  key: K
-): obj is T & Record<K, unknown> {
-  return key in obj;
-}
+/**
+ * Check if a value is a valid business role
+ */
+export const isValidBusinessRole = (value: unknown): value is string => {
+  if (!isString(value)) return false;
 
-export function isNotNull<T>(value: T | null): value is T {
-  return value !== null;
-}
+  const validRoles = [
+    'SUPER_ADMIN',
+    'TECH_ADVISOR',
+    'HOSPITAL_ADMIN',
+    'DOCTOR',
+    'NURSE',
+    'RECEPTIONIST',
+    'PATIENT'
+  ];
 
-export function isNotUndefined<T>(value: T | undefined): value is T {
-  return value !== undefined;
-}
+  return validRoles.includes(value);
+};
 
-export function isDefined<T>(value: T | null | undefined): value is T {
-  return value !== null && value !== undefined;
-}
+/**
+ * Check if an API response has the expected structure
+ */
+export const isValidApiResponse = <T>(value: unknown): value is { success: boolean; data: T; message: string } => {
+  if (!isObject(value)) return false;
 
-export function isUser(obj: any): obj is User {
+  const obj = value as Record<string, unknown>;
+
   return (
-    typeof obj === 'object' &&
-    obj !== null &&
-    'id' in obj &&
-    'userId' in obj &&
-    'email' in obj &&
-    'firstName' in obj &&
-    'lastName' in obj &&
-    'role' in obj
+    isBoolean(obj.success) &&
+    isString(obj.message) &&
+    obj.data !== undefined
   );
-}
+};
 
-export function isAppointment(obj: any): obj is Appointment {
-  return (
-    typeof obj === 'object' &&
-    obj !== null &&
-    'id' in obj &&
-    'patientId' in obj &&
-    'doctorId' in obj &&
-    'appointmentDate' in obj
-    // Add other properties that define an Appointment
-  );
-}
+/**
+ * Check if a value is null or undefined
+ */
+export const isNullOrUndefined = (value: unknown): value is null | undefined => {
+  return value === null || value === undefined;
+};
 
-export function isDoctor(obj: any): obj is Doctor {
-  return (
-    typeof obj === 'object' &&
-    obj !== null &&
-    'id' in obj &&
-    'userId' in obj &&
-    'specialization' in obj
-    // Add other properties that define a Doctor
-  );
-}
+/**
+ * Check if a value is empty (null, undefined, empty string, empty array, empty object)
+ */
+export const isEmpty = (value: unknown): boolean => {
+  if (isNullOrUndefined(value)) return true;
+  if (isString(value)) return value.trim().length === 0;
+  if (isArray(value)) return value.length === 0;
+  if (isObject(value)) return Object.keys(value).length === 0;
+  return false;
+};
 
-export function isPatient(obj: any): obj is Patient {
-  return (
-    typeof obj === 'object' &&
-    obj !== null &&
-    'id' in obj &&
-    'userId' in obj &&
-    'dateOfBirth' in obj
-    // Add other properties that define a Patient
-  );
-}
+/**
+ * Type guard for appointment status
+ */
+export const isValidAppointmentStatus = (value: unknown): value is string => {
+  if (!isString(value)) return false;
 
-export function isHospital(obj: any): obj is HospitalDto {
-  return (
-    typeof obj === 'object' &&
-    obj !== null &&
-    'id' in obj &&
-    'name' in obj &&
-    'address' in obj
-    // Add other properties that define a Hospital
-  );
-}
+  const validStatuses = [
+    'SCHEDULED',
+    'CONFIRMED',
+    'IN_PROGRESS',
+    'COMPLETED',
+    'CANCELLED',
+    'NO_SHOW'
+  ];
 
+  return validStatuses.includes(value);
+};
 
+/**
+ * Type guard for payment status
+ */
+export const isValidPaymentStatus = (value: unknown): value is string => {
+  if (!isString(value)) return false;
 
+  const validStatuses = ['PENDING', 'PAID', 'FAILED', 'REFUNDED'];
+  return validStatuses.includes(value);
+};
 
-export function isErrorResponse(obj: any): obj is BaseResponse<any> {
-  return (
-    typeof obj === 'object' &&
-    obj !== null &&
-    'success' in obj &&
-    obj.success === false &&
-    'error' in obj
-  );
-}
-
-
-// export function isErrorResponse(obj: any): obj is ErrorResponse {
-//   return (
-//     typeof obj === 'object' &&
-//     obj !== null &&
-//     obj.success === false &&
-//     typeof obj.errorCode === 'string' &&
-//     typeof obj.message === 'string'
-//   );
-// }
-
-
-
-// export function isUser(obj: any): obj is User {
-//   return (
-//     typeof obj === 'object' &&
-//     obj !== null &&
-//     typeof obj.id === 'string' &&
-//     typeof obj.email === 'string' &&
-//     typeof obj.firstName === 'string' &&
-//     typeof obj.lastName === 'string' &&
-//     typeof obj.role === 'string'
-//   );
-// }
-
-// Export default for module compliance
-export default {
-  isApiResponse,
-  isErrorResponse,
-  isUser,
-  isAppointmentDto,
-  isDoctorDto,
-  isHospitalDto,
-  isPatientDto,
+// Default export for the main type guards object
+const typeGuards = {
   isString,
   isNumber,
   isBoolean,
+  isObject,
   isArray,
-  isNonEmptyString,
+  isUser,
   isValidEmail,
   isValidUUID,
+  isValidPhoneNumber,
   isValidDate,
-  hasProperty,
-  isNotNull,
-  isNotUndefined,
-  isDefined,
+  isValidBusinessRole,
+  isValidApiResponse,
+  isNullOrUndefined,
+  isEmpty,
+  isValidAppointmentStatus,
+  isValidPaymentStatus,
 };
+
+export default typeGuards;
