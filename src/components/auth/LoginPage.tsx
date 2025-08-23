@@ -1,7 +1,10 @@
 // src/components/LoginPage.tsx
 import React, { useState, FormEvent } from 'react';
-import { useAuth, LoginCredentials } from '../contexts/AuthContext';
+// import { useAuth, LoginCredentials } from '../../contexts/AuthContext';
+// import { useAuth } from '../../contexts/AuthContext';
 import './LoginPage.css';
+import { LoginCredentials } from '../../types';
+
 
 export const LoginPage: React.FC = () => {
   const { login, isLoading, error, clearError } = useAuth();

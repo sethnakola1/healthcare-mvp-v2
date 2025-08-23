@@ -1,7 +1,8 @@
 // src/components/Login.tsx
 import React, { useState, FormEvent } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { UserRole, getRoleColor } from '../utils/auth.util';
+import { useAuth } from '../../contexts/AuthContext';
+import { UserRole } from '../../types';
+import { getRoleColor } from '../../config/constants';
 
 interface LoginFormData {
   email: string;
