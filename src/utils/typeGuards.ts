@@ -4,194 +4,138 @@ import { User } from '../contexts/AuthContext';
 /**
  * Check if a value is a string
  */
-export const isString = (value: unknown): value is string => {
+export function isString(value: unknown): value is string {
   return typeof value === 'string';
-};
+}
 
 /**
  * Check if a value is a number
  */
-export const isNumber = (value: unknown): value is number => {
+export function isNumber(value: unknown): value is number {
   return typeof value === 'number' && !isNaN(value);
-};
+}
 
 /**
  * Check if a value is a boolean
  */
-export const isBoolean = (value: unknown): value is boolean => {
+export function isBoolean(value: unknown): value is boolean {
   return typeof value === 'boolean';
-};
+}
 
 /**
- * Check if a value is an object (and not null)
+ * Check if a value is an object (and not null or array)
  */
-export const isObject = (value: unknown): value is Record<string, unknown> => {
+export function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
-};
+}
 
 /**
  * Check if a value is an array
  */
-export const isArray = (value: unknown): value is unknown[] => {
+export function isArray(value: unknown): value is unknown[] {
   return Array.isArray(value);
-};
+}
 
 /**
  * Check if a value is a valid User object
  */
-export const isUser = (value: unknown): value is User => {
-  if (!isObject(value)) return false;
+export function isUser(value: unknown): value is User {
+  if (!isObject(value)) {
+    return false;
+  }
 
-  const obj = value as Record<string, unknown>;
-
-  return (
-    isString(obj.userId) &&
-    isString(obj.email) &&
-    isString(obj.firstName) &&
-    isString(obj.lastName) &&
-    isString(obj.role) &&
-    isBoolean(obj.isActive)
-  );
-};
+  const requiredFields = ['userId', 'email', 'firstName', 'lastName', 'role'];
+  return requiredFields.every(field => field in value);
+}
 
 /**
- * Check if a value is a valid email address
+ * Check if a string is a valid email format
  */
-export const isValidEmail = (value: unknown): value is string => {
-  if (!isString(value)) return false;
-
+export function isValidEmail(email: string): boolean {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(value);
-};
+  return emailRegex.test(email);
+}
 
 /**
- * Check if a value is a valid UUID
+ * Check if a string is a valid UUID
  */
-export const isValidUUID = (value: unknown): value is string => {
-  if (!isString(value)) return false;
-
+export function isValidUUID(uuid: string): boolean {
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  return uuidRegex.test(value);
-};
+  return uuidRegex.test(uuid);
+}
 
 /**
- * Check if a value is a valid phone number
+ * Check if a value is a valid date
  */
-export const isValidPhoneNumber = (value: unknown): value is string => {
-  if (!isString(value)) return false;
-
-  const phoneRegex = /^\+?[1-9]\d{1,14}$/;
-  return phoneRegex.test(value);
-};
-
-/**
- * Check if a date string is a valid date
- */
-export const isValidDate = (value: unknown): value is string => {
-  if (!isString(value)) return false;
-
-  const date = new Date(value);
-  return !isNaN(date.getTime());
-};
-
-/**
- * Check if a value is a valid business role
- */
-export const isValidBusinessRole = (value: unknown): value is string => {
-  if (!isString(value)) return false;
-
-  const validRoles = [
-    'SUPER_ADMIN',
-    'TECH_ADVISOR',
-    'HOSPITAL_ADMIN',
-    'DOCTOR',
-    'NURSE',
-    'RECEPTIONIST',
-    'PATIENT'
-  ];
-
-  return validRoles.includes(value);
-};
-
-/**
- * Check if an API response has the expected structure
- */
-export const isValidApiResponse = <T>(value: unknown): value is { success: boolean; data: T; message: string } => {
-  if (!isObject(value)) return false;
-
-  const obj = value as Record<string, unknown>;
-
-  return (
-    isBoolean(obj.success) &&
-    isString(obj.message) &&
-    obj.data !== undefined
-  );
-};
+export function isValidDate(value: unknown): value is Date {
+  return value instanceof Date && !isNaN(value.getTime());
+}
 
 /**
  * Check if a value is null or undefined
  */
-export const isNullOrUndefined = (value: unknown): value is null | undefined => {
+export function isNullOrUndefined(value: unknown): value is null | undefined {
   return value === null || value === undefined;
-};
+}
 
 /**
- * Check if a value is empty (null, undefined, empty string, empty array, empty object)
+ * Check if a value is defined (not null or undefined)
  */
-export const isEmpty = (value: unknown): boolean => {
-  if (isNullOrUndefined(value)) return true;
-  if (isString(value)) return value.trim().length === 0;
-  if (isArray(value)) return value.length === 0;
-  if (isObject(value)) return Object.keys(value).length === 0;
-  return false;
-};
+export function isDefined<T>(value: T | null | undefined): value is T {
+  return value !== null && value !== undefined;
+}
 
 /**
- * Type guard for appointment status
+ * Check if a string is not empty
  */
-export const isValidAppointmentStatus = (value: unknown): value is string => {
-  if (!isString(value)) return false;
-
-  const validStatuses = [
-    'SCHEDULED',
-    'CONFIRMED',
-    'IN_PROGRESS',
-    'COMPLETED',
-    'CANCELLED',
-    'NO_SHOW'
-  ];
-
-  return validStatuses.includes(value);
-};
+export function isNonEmptyString(value: unknown): value is string {
+  return isString(value) && value.trim().length > 0;
+}
 
 /**
- * Type guard for payment status
+ * Check if an array is not empty
  */
-export const isValidPaymentStatus = (value: unknown): value is string => {
-  if (!isString(value)) return false;
+export function isNonEmptyArray<T>(value: T[]): value is [T, ...T[]] {
+  return isArray(value) && value.length > 0;
+}
 
-  const validStatuses = ['PENDING', 'PAID', 'FAILED', 'REFUNDED'];
-  return validStatuses.includes(value);
-};
+/**
+ * Type guard for API response
+ */
+export interface ApiResponse<T = any> {
+  success: boolean;
+  message: string;
+  data?: T;
+  error?: string;
+  errorCode?: string;
+  timestamp: string;
+}
 
-// Default export for the main type guards object
-const typeGuards = {
-  isString,
-  isNumber,
-  isBoolean,
-  isObject,
-  isArray,
-  isUser,
-  isValidEmail,
-  isValidUUID,
-  isValidPhoneNumber,
-  isValidDate,
-  isValidBusinessRole,
-  isValidApiResponse,
-  isNullOrUndefined,
-  isEmpty,
-  isValidAppointmentStatus,
-  isValidPaymentStatus,
-};
+export function isApiResponse<T>(value: unknown): value is ApiResponse<T> {
+  if (!isObject(value)) {
+    return false;
+  }
 
-export default typeGuards;
+  return (
+    'success' in value &&
+    isBoolean(value.success) &&
+    'message' in value &&
+    isString(value.message) &&
+    'timestamp' in value &&
+    isString(value.timestamp)
+  );
+}
+
+/**
+ * Check if API response is successful
+ */
+export function isSuccessfulApiResponse<T>(value: unknown): value is ApiResponse<T> & { success: true; data: T } {
+  return isApiResponse(value) && value.success === true && 'data' in value;
+}
+
+/**
+ * Check if API response is an error
+ */
+export function isErrorApiResponse(value: unknown): value is ApiResponse & { success: false; error: string } {
+  return isApiResponse(value) && value.success === false && 'error' in value;
+}

@@ -1,316 +1,251 @@
-import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
-import { authService } from '../../services/auth.service';
-import Cookies from 'js-cookie';
+import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import AuthService, { LoginResponse, User, BaseResponse } from '../../services/auth.service';
 
 // Types
-export interface User {
-  userId: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  fullName: string;
-  username: string;
-  role: string;
-  roleDisplayName: string;
-  isActive: boolean;
-  emailVerified: boolean;
-  phoneNumber?: string;
-  territory?: string;
-  partnerCode?: string;
-  lastLogin?: string;
-  createdAt?: string;
-  hospitalId?: string;
-  hospitalName?: string;
-}
-
 export interface AuthState {
-  isAuthenticated: boolean;
   user: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  error: string | null;
   token: string | null;
   refreshToken: string | null;
-  loading: boolean;
-  error: string | null;
 }
-
-export interface AuthContextType extends AuthState {
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
-  register: (userData: RegisterData) => Promise<void>;
-  refreshAuth: () => Promise<void>;
-  clearError: () => void;
-}
-
-export interface RegisterData {
-  firstName: string;
-  lastName: string;
-  email: string;
-  username: string;
-  password: string;
-  confirmPassword: string;
-  phoneNumber?: string;
-  territory: string;
-  role: 'SUPER_ADMIN' | 'TECH_ADVISOR';
-}
-
-// Action types
-type AuthAction =
-  | { type: 'AUTH_START' }
-  | { type: 'AUTH_SUCCESS'; payload: { user: User; token: string; refreshToken: string } }
-  | { type: 'AUTH_FAILURE'; payload: string }
-  | { type: 'AUTH_LOGOUT' }
-  | { type: 'CLEAR_ERROR' }
-  | { type: 'SET_USER'; payload: User };
 
 // Initial state
 const initialState: AuthState = {
-  isAuthenticated: false,
   user: null,
-  token: null,
-  refreshToken: null,
-  loading: false,
+  isAuthenticated: false,
+  isLoading: false,
   error: null,
+  token: localStorage.getItem('accessToken'),
+  refreshToken: localStorage.getItem('refreshToken'),
 };
 
-// Reducer
-const authReducer = (state: AuthState, action: AuthAction): AuthState => {
-  switch (action.type) {
-    case 'AUTH_START':
-      return {
-        ...state,
-        loading: true,
-        error: null,
-      };
-    case 'AUTH_SUCCESS':
-      return {
-        ...state,
-        isAuthenticated: true,
-        user: action.payload.user,
-        token: action.payload.token,
-        refreshToken: action.payload.refreshToken,
-        loading: false,
-        error: null,
-      };
-    case 'AUTH_FAILURE':
-      return {
-        ...state,
-        isAuthenticated: false,
-        user: null,
-        token: null,
-        refreshToken: null,
-        loading: false,
-        error: action.payload,
-      };
-    case 'AUTH_LOGOUT':
-      return {
-        ...initialState,
-      };
-    case 'CLEAR_ERROR':
-      return {
-        ...state,
-        error: null,
-      };
-    case 'SET_USER':
-      return {
-        ...state,
-        user: action.payload,
-      };
-    default:
-      return state;
+// Async thunks
+export const loginUser = createAsyncThunk<
+  LoginResponse,
+  { email: string; password: string },
+  { rejectValue: string }
+>(
+  'auth/login',
+  async ({ email, password }, { rejectWithValue }) => {
+    try {
+      const response = await AuthService.login(email, password);
+
+      if (response.data.success && response.data.data) {
+        const loginData = response.data.data;
+
+        // Store tokens in localStorage
+        AuthService.setTokens(loginData.accessToken, loginData.refreshToken);
+
+        // Get user details
+        const userResponse = await AuthService.getCurrentUser();
+        if (userResponse.data.success && userResponse.data.data) {
+          AuthService.setUser(userResponse.data.data);
+        }
+
+        return loginData;
+      } else {
+        return rejectWithValue(response.data.error || 'Login failed');
+      }
+    } catch (error: any) {
+      const message = error.response?.data?.error || error.response?.data?.message || 'Login failed';
+      return rejectWithValue(message);
+    }
   }
-};
+);
 
-// Context
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const getCurrentUser = createAsyncThunk<
+  User,
+  void,
+  { rejectValue: string }
+>(
+  'auth/getCurrentUser',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await AuthService.getCurrentUser();
 
-// Provider
-export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [state, dispatch] = useReducer(authReducer, initialState);
+      if (response.data.success && response.data.data) {
+        AuthService.setUser(response.data.data);
+        return response.data.data;
+      } else {
+        return rejectWithValue(response.data.error || 'Failed to get user');
+      }
+    } catch (error: any) {
+      const message = error.response?.data?.error || error.response?.data?.message || 'Failed to get user';
+      return rejectWithValue(message);
+    }
+  }
+);
 
-  // Initialize auth state from stored tokens
-  useEffect(() => {
-    const initializeAuth = async () => {
-      const token = Cookies.get('access_token');
-      const refreshToken = Cookies.get('refresh_token');
+export const logoutUser = createAsyncThunk<
+  void,
+  void,
+  { rejectValue: string }
+>(
+  'auth/logout',
+  async (_, { rejectWithValue }) => {
+    try {
+      await AuthService.logout();
+    } catch (error: any) {
+      // Even if logout API fails, clear local storage
+      console.error('Logout API failed:', error);
+    } finally {
+      AuthService.clearAuth();
+    }
+  }
+);
 
-      if (token) {
+export const refreshToken = createAsyncThunk<
+  LoginResponse,
+  void,
+  { rejectValue: string }
+>(
+  'auth/refreshToken',
+  async (_, { rejectWithValue }) => {
+    try {
+      const refreshToken = localStorage.getItem('refreshToken');
+      if (!refreshToken) {
+        return rejectWithValue('No refresh token available');
+      }
+
+      const response = await AuthService.refreshToken({ refreshToken });
+
+      if (response.data.success && response.data.data) {
+        const loginData = response.data.data;
+        AuthService.setTokens(loginData.accessToken, loginData.refreshToken);
+        return loginData;
+      } else {
+        return rejectWithValue(response.data.error || 'Token refresh failed');
+      }
+    } catch (error: any) {
+      const message = error.response?.data?.error || 'Token refresh failed';
+      return rejectWithValue(message);
+    }
+  }
+);
+
+// Auth slice
+const authSlice = createSlice({
+  name: 'auth',
+  initialState,
+  reducers: {
+    // Synchronous actions
+    clearError: (state) => {
+      state.error = null;
+    },
+    setUser: (state, action: PayloadAction<User>) => {
+      state.user = action.payload;
+      state.isAuthenticated = true;
+      AuthService.setUser(action.payload);
+    },
+    clearAuth: (state) => {
+      state.user = null;
+      state.isAuthenticated = false;
+      state.token = null;
+      state.refreshToken = null;
+      state.error = null;
+      state.isLoading = false;
+      AuthService.clearAuth();
+    },
+    initializeAuth: (state) => {
+      const token = localStorage.getItem('accessToken');
+      const userStr = localStorage.getItem('user');
+
+      if (token && userStr) {
         try {
-          // Validate token and get user info
-          const userResponse = await authService.getCurrentUser(token);
-          if (userResponse.success) {
-            dispatch({
-              type: 'AUTH_SUCCESS',
-              payload: {
-                user: userResponse.data,
-                token,
-                refreshToken: refreshToken || '',
-              },
-            });
-          } else {
-            // Token is invalid, clear cookies
-            Cookies.remove('access_token');
-            Cookies.remove('refresh_token');
-          }
+          const user = JSON.parse(userStr);
+          state.user = user;
+          state.token = token;
+          state.refreshToken = localStorage.getItem('refreshToken');
+          state.isAuthenticated = true;
         } catch (error) {
-          console.error('Failed to initialize auth:', error);
-          Cookies.remove('access_token');
-          Cookies.remove('refresh_token');
+          console.error('Error parsing stored user data:', error);
+          AuthService.clearAuth();
         }
       }
-    };
+    },
+  },
+  extraReducers: (builder) => {
+    // Login
+    builder
+      .addCase(loginUser.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(loginUser.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.token = action.payload.accessToken;
+        state.refreshToken = action.payload.refreshToken;
+        state.isAuthenticated = true;
+        state.error = null;
+      })
+      .addCase(loginUser.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload || 'Login failed';
+        state.isAuthenticated = false;
+        state.user = null;
+        state.token = null;
+        state.refreshToken = null;
+      });
 
-    initializeAuth();
-  }, []);
+    // Get current user
+    builder
+      .addCase(getCurrentUser.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(getCurrentUser.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.user = action.payload;
+        state.isAuthenticated = true;
+        state.error = null;
+      })
+      .addCase(getCurrentUser.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload || 'Failed to get user';
+        state.isAuthenticated = false;
+        state.user = null;
+      });
 
-  const login = async (email: string, password: string): Promise<void> => {
-    dispatch({ type: 'AUTH_START' });
+    // Logout
+    builder
+      .addCase(logoutUser.fulfilled, (state) => {
+        state.user = null;
+        state.isAuthenticated = false;
+        state.token = null;
+        state.refreshToken = null;
+        state.error = null;
+        state.isLoading = false;
+      });
 
-    try {
-      const response = await authService.login(email, password);
+    // Refresh token
+    builder
+      .addCase(refreshToken.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(refreshToken.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.token = action.payload.accessToken;
+        state.refreshToken = action.payload.refreshToken;
+        state.error = null;
+      })
+      .addCase(refreshToken.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload || 'Token refresh failed';
+        // Don't clear authentication here, let the user try to login again
+      });
+  },
+});
 
-      if (response.success) {
-        const { accessToken, refreshToken: newRefreshToken, ...userData } = response.data;
+// Export actions
+export const { clearError, setUser, clearAuth, initializeAuth } = authSlice.actions;
 
-        // Store tokens in cookies
-        Cookies.set('access_token', accessToken, { expires: 1 }); // 1 day
-        Cookies.set('refresh_token', newRefreshToken, { expires: 7 }); // 7 days
+// Export reducer
+export default authSlice.reducer;
 
-        const user: User = {
-          userId: userData.userId,
-          email: userData.email,
-          firstName: userData.firstName,
-          lastName: userData.lastName,
-          fullName: `${userData.firstName} ${userData.lastName}`,
-          username: userData.email,
-          role: userData.role,
-          roleDisplayName: userData.role,
-          isActive: true,
-          emailVerified: true,
-        };
-
-        dispatch({
-          type: 'AUTH_SUCCESS',
-          payload: {
-            user,
-            token: accessToken,
-            refreshToken: newRefreshToken,
-          },
-        });
-      } else {
-        throw new Error(response.message || 'Login failed');
-      }
-    } catch (error: any) {
-      const errorMessage = error?.response?.data?.message || error?.message || 'Login failed';
-      dispatch({ type: 'AUTH_FAILURE', payload: errorMessage });
-      throw error;
-    }
-  };
-
-  const register = async (userData: RegisterData): Promise<void> => {
-    dispatch({ type: 'AUTH_START' });
-
-    try {
-      const response = await authService.register(userData);
-
-      if (response.success) {
-        // After successful registration, automatically log the user in
-        await login(userData.email, userData.password);
-      } else {
-        throw new Error(response.message || 'Registration failed');
-      }
-    } catch (error: any) {
-      const errorMessage = error?.response?.data?.message || error?.message || 'Registration failed';
-      dispatch({ type: 'AUTH_FAILURE', payload: errorMessage });
-      throw error;
-    }
-  };
-
-  const logout = (): void => {
-    // Remove tokens from cookies
-    Cookies.remove('access_token');
-    Cookies.remove('refresh_token');
-
-    // Clear auth state
-    dispatch({ type: 'AUTH_LOGOUT' });
-
-    // Optional: Call backend logout endpoint
-    authService.logout().catch(console.error);
-  };
-
-  const refreshAuth = async (): Promise<void> => {
-    const refreshToken = Cookies.get('refresh_token');
-
-    if (!refreshToken) {
-      logout();
-      return;
-    }
-
-    try {
-      const response = await authService.refreshToken(refreshToken);
-
-      if (response.success) {
-        const { accessToken, refreshToken: newRefreshToken, ...userData } = response.data;
-
-        // Update tokens in cookies
-        Cookies.set('access_token', accessToken, { expires: 1 });
-        if (newRefreshToken) {
-          Cookies.set('refresh_token', newRefreshToken, { expires: 7 });
-        }
-
-        const user: User = {
-          userId: userData.userId,
-          email: userData.email,
-          firstName: userData.firstName,
-          lastName: userData.lastName,
-          fullName: `${userData.firstName} ${userData.lastName}`,
-          username: userData.email,
-          role: userData.role,
-          roleDisplayName: userData.role,
-          isActive: true,
-          emailVerified: true,
-        };
-
-        dispatch({
-          type: 'AUTH_SUCCESS',
-          payload: {
-            user,
-            token: accessToken,
-            refreshToken: newRefreshToken || refreshToken,
-          },
-        });
-      } else {
-        logout();
-      }
-    } catch (error) {
-      console.error('Token refresh failed:', error);
-      logout();
-    }
-  };
-
-  const clearError = (): void => {
-    dispatch({ type: 'CLEAR_ERROR' });
-  };
-
-  const contextValue: AuthContextType = {
-    ...state,
-    login,
-    logout,
-    register,
-    refreshAuth,
-    clearError,
-  };
-
-  return (
-    <AuthContext.Provider value={contextValue}>
-      {children}
-    </AuthContext.Provider>
-  );
-};
-
-// Hook to use auth context
-export const useAuth = (): AuthContextType => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
+// Selectors
+export const selectAuth = (state: { auth: AuthState }) => state.auth;
+export const selectUser = (state: { auth: AuthState }) => state.auth.user;
+export const selectIsAuthenticated = (state: { auth: AuthState }) => state.auth.isAuthenticated;
+export const selectIsLoading = (state: { auth: AuthState }) => state.auth.isLoading;
+export const selectError = (state: { auth: AuthState }) => state.auth.error;

@@ -1,147 +1,84 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { authService, LoginResponse, RegisterRequest } from '../services/auth.service';
+import React, { createContext, useContext, useEffect, ReactNode } from 'react';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import {
+  loginUser,
+  getCurrentUser,
+  logoutUser,
+  clearError,
+  initializeAuth,
+  selectAuth
+} from '../store/slices/authSlice';
+import { User } from '../services/auth.service';
 
-interface User {
-  userId: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  role: string;
-  roleDisplayName: string;
-}
-
-interface AuthContextType {
+// Context type
+export interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
-  register: (userData: RegisterRequest) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   clearError: () => void;
+  refreshUser: () => Promise<void>;
 }
 
+// Create context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-interface AuthProviderProps {
-  children: ReactNode;
-}
+// Provider component
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const dispatch = useAppDispatch();
+  const { user, isAuthenticated, isLoading, error } = useAppSelector(selectAuth);
 
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Check if user is already logged in on app startup
+  // Initialize auth state from localStorage on mount
   useEffect(() => {
-    const initializeAuth = async () => {
-      try {
-        const token = localStorage.getItem('accessToken');
-        if (token) {
-          // Validate token and get user info
-          const userInfo = await authService.getCurrentUser();
-          setUser({
-            userId: userInfo.userId,
-            email: userInfo.email,
-            firstName: userInfo.firstName,
-            lastName: userInfo.lastName,
-            role: userInfo.role,
-            roleDisplayName: userInfo.roleDisplayName
-          });
-        }
-      } catch (err) {
-        console.error('Auth initialization failed:', err);
-        // Clear invalid token
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    dispatch(initializeAuth());
 
-    initializeAuth();
-  }, []);
-
-  const login = async (email: string, password: string): Promise<void> => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response: LoginResponse = await authService.login({ email, password });
-
-      // Store tokens
-      localStorage.setItem('accessToken', response.accessToken);
-      localStorage.setItem('refreshToken', response.refreshToken);
-
-      // Set user state
-      setUser({
-        userId: response.userId,
-        email: response.email,
-        firstName: response.firstName,
-        lastName: response.lastName,
-        role: response.role,
-        roleDisplayName: response.role.replace('_', ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())
-      });
-    } catch (err: any) {
-      setError(err.message || 'Login failed');
-      throw err;
-    } finally {
-      setIsLoading(false);
+    // If we have a token but no user, try to get current user
+    const token = localStorage.getItem('accessToken');
+    if (token && !user) {
+      dispatch(getCurrentUser());
     }
-  };
+  }, [dispatch, user]);
 
-  const register = async (userData: RegisterRequest): Promise<void> => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await authService.register(userData);
-
-      // Auto-login after successful registration
-      await login(userData.email, userData.password);
-    } catch (err: any) {
-      setError(err.message || 'Registration failed');
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const logout = (): void => {
-    // Clear tokens
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-
-    // Clear user state
-    setUser(null);
-    setError(null);
-
-    // Call logout API (optional)
-    authService.logout().catch(console.error);
-  };
-
-  const clearError = (): void => {
-    setError(null);
-  };
-
-  const value: AuthContextType = {
+  // Context value
+  const contextValue: AuthContextType = {
     user,
-    isAuthenticated: !!user,
+    isAuthenticated,
     isLoading,
     error,
-    login,
-    register,
-    logout,
-    clearError,
+
+    login: async (email: string, password: string) => {
+      const result = await dispatch(loginUser({ email, password }));
+      if (loginUser.fulfilled.match(result)) {
+        // Login successful, get user details
+        await dispatch(getCurrentUser());
+      } else {
+        throw new Error(result.payload || 'Login failed');
+      }
+    },
+
+    logout: async () => {
+      await dispatch(logoutUser());
+    },
+
+    clearError: () => {
+      dispatch(clearError());
+    },
+
+    refreshUser: async () => {
+      await dispatch(getCurrentUser());
+    },
   };
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );
 };
 
+// Hook to use auth context
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (context === undefined) {
@@ -150,4 +87,5 @@ export const useAuth = (): AuthContextType => {
   return context;
 };
 
-export default AuthContext;
+// Export User type for other components
+export { User };
