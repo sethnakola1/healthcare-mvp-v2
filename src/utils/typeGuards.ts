@@ -143,6 +143,75 @@ export function isDefined<T>(value: T | null | undefined): value is T {
   return value !== null && value !== undefined;
 }
 
+export function isUser(obj: any): obj is User {
+  return (
+    typeof obj === 'object' &&
+    obj !== null &&
+    'id' in obj &&
+    'userId' in obj &&
+    'email' in obj &&
+    'firstName' in obj &&
+    'lastName' in obj &&
+    'role' in obj
+  );
+}
+
+export function isAppointment(obj: any): obj is Appointment {
+  return (
+    typeof obj === 'object' &&
+    obj !== null &&
+    'id' in obj &&
+    'patientId' in obj &&
+    'doctorId' in obj &&
+    'appointmentDate' in obj
+    // Add other properties that define an Appointment
+  );
+}
+
+export function isDoctor(obj: any): obj is Doctor {
+  return (
+    typeof obj === 'object' &&
+    obj !== null &&
+    'id' in obj &&
+    'userId' in obj &&
+    'specialization' in obj
+    // Add other properties that define a Doctor
+  );
+}
+
+export function isPatient(obj: any): obj is Patient {
+  return (
+    typeof obj === 'object' &&
+    obj !== null &&
+    'id' in obj &&
+    'userId' in obj &&
+    'dateOfBirth' in obj
+    // Add other properties that define a Patient
+  );
+}
+
+export function isHospital(obj: any): obj is Hospital {
+  return (
+    typeof obj === 'object' &&
+    obj !== null &&
+    'id' in obj &&
+    'name' in obj &&
+    'address' in obj
+    // Add other properties that define a Hospital
+  );
+}
+
+
+export function isErrorResponse(obj: any): obj is BaseResponse<any> {
+  return (
+    typeof obj === 'object' &&
+    obj !== null &&
+    'success' in obj &&
+    obj.success === false &&
+    'error' in obj
+  );
+}
+
 // Export default for module compliance
 export default {
   isApiResponse,

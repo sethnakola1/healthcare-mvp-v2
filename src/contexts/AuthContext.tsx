@@ -30,11 +30,19 @@ export interface AuthState {
 }
 
 export interface AuthContextType {
-  authState: AuthState;
-  user: User | null;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
-  clearError: () => void;
+    authState: AuthState;
+      login: (credentials: LoginCredentials) => Promise<void>;
+      logout: () => Promise<void>;
+      isLoading: boolean;
+      error: string | null;
+      user: User | null;
+      clearError: () => void;
+
+//   authState: AuthState;
+//   user: User | null;
+//   login: (email: string, password: string) => Promise<void>;
+//   logout: () => void;
+//   clearError: () => void;
 }
 
 type AuthAction =
@@ -132,6 +140,13 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+
+    const dispatch: AppDispatch = useDispatch();
+      const authState = useSelector((state: RootState) => state.auth);
+
+      const [localLoading, setLocalLoading] = useState(false);
+      const [localError, setLocalError] = useState<string | null>(null);
+
   const [authState, dispatch] = useReducer(authReducer, initialState);
 
   // Initialize auth state from localStorage

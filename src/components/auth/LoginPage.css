@@ -345,3 +345,36 @@
 .retry-button:hover {
   background: #2563eb;
 }
+
+/* Example of moving some styles from inline to a CSS file */
+.login-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f3f4f6; /* bg-gray-100 */
+  padding: 1rem; /* px-4 sm:px-6 lg:px-8 */
+}
+
+.login-card {
+  max-width: 28rem; /* max-w-md */
+  width: 100%;
+  background-color: #ffffff; /* bg-white */
+  padding: 2rem; /* p-8 */
+  border-radius: 0.5rem; /* rounded-lg */
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* shadow-md */
+}
+
+.login-title {
+  text-align: center;
+  font-size: 1.875rem; /* text-3xl */
+  font-weight: 800; /* font-extrabold */
+  color: #1a202c; /* text-gray-900 */
+  margin-bottom: 1.5rem; /* mb-6 */
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem; /* space-y-6 */
+}

@@ -1,5 +1,6 @@
 // src/utils/auth.util.ts
-import { User } from '../contexts/AuthContext';
+// import { User } from '../contexts/AuthContext';
+import { User, UserRole } from '../types/api.types'; // Assuming User and UserRole are now in api.types.ts
 
 export interface TokenPayload {
   userId: string;
@@ -11,27 +12,6 @@ export interface TokenPayload {
   iat: number;
   exp: number;
 }
-
-// Role color mapping
-export const getRoleColor = (role: string): string => {
-  const roleColors: Record<string, string> = {
-    SUPER_ADMIN: '#dc2626', // red-600
-    TECH_ADVISOR: '#059669', // emerald-600
-    HOSPITAL_ADMIN: '#2563eb', // blue-600
-    DOCTOR: '#7c3aed', // violet-600
-    NURSE: '#db2777', // pink-600
-    RECEPTIONIST: '#ea580c', // orange-600
-    PATIENT: '#0891b2', // cyan-600
-    BILLING_STAFF: '#65a30d', // lime-600
-    LAB_ADMIN: '#a21caf', // fuchsia-700
-    LAB_STAFF: '#0d9488', // teal-600
-    PHARMACY_ADMIN: '#be185d', // pink-700
-    PHARMACY_STAFF: '#0369a1', // sky-700
-    TECHNICIAN: '#374151', // gray-700
-  };
-
-  return roleColors[role] || '#6b7280'; // gray-500 as default
-};
 
 // Role display names
 export const getRoleDisplayName = (role: string): string => {
@@ -226,6 +206,52 @@ export const validatePassword = (password: string): { isValid: boolean; errors: 
   };
 };
 
+export const getRoleColor = (role: UserRole | string): string => {
+  switch (role) {
+    case UserRole.Admin:
+      return 'text-purple-600';
+    case UserRole.Doctor:
+      return 'text-blue-600';
+    case UserRole.Patient:
+      return 'text-green-600';
+    case UserRole.Nurse:
+      return 'text-teal-600';
+    case UserRole.Receptionist:
+      return 'text-orange-600';
+    case UserRole.Pharmacist:
+      return 'text-yellow-600';
+    case UserRole.Laboratory:
+      return 'text-red-600';
+    case UserRole.Radiologist:
+      return 'text-indigo-600';
+    default:
+      return 'text-gray-600';
+  }
+};
+
+export const getRoleDisplayName = (role: UserRole | string): string => {
+  switch (role) {
+    case UserRole.Admin:
+      return 'Administrator';
+    case UserRole.Doctor:
+      return 'Doctor';
+    case UserRole.Patient:
+      return 'Patient';
+    case UserRole.Nurse:
+      return 'Nurse';
+    case UserRole.Receptionist:
+      return 'Receptionist';
+    case UserRole.Pharmacist:
+      return 'Pharmacist';
+    case UserRole.Laboratory:
+      return 'Laboratory Staff';
+    case UserRole.Radiologist:
+      return 'Radiologist';
+    default:
+      return 'Unknown Role';
+  }
+};
+
 // Create auth utilities object
 const authUtils = {
   getRoleColor,
@@ -249,6 +275,13 @@ const authUtils = {
   getDefaultRoute,
   validateEmail,
   validatePassword,
+};
+
+export const formatUserName = (user: User): string => {
+  if (user) {
+    return `${user.firstName} ${user.lastName}`;
+  }
+  return 'Guest';
 };
 
 export default authUtils;

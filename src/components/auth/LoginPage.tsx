@@ -1,13 +1,17 @@
-// src/components/LoginPage.tsx
-import React, { useState, FormEvent } from 'react';
-// import { useAuth, LoginCredentials } from '../../contexts/AuthContext';
-// import { useAuth } from '../../contexts/AuthContext';
-import './LoginPage.css';
-import { LoginCredentials } from '../../types';
+import React, { useState, FormEvent, useEffect } from 'react';
+import { useAuth } from '../../contexts/AuthContext'; // Corrected import path
+// import { LoginCredentials, UserRole } from '../types/api.types'; // Assuming UserRole and LoginCredentials are here
+// import { getRoleColor } from '../utils/auth.util'; // Assuming this utility exists
+import { useNavigate } from 'react-router-dom'; // Assuming you are using react-router-dom for navigation
 
+import './LoginPage.css'; // Your specific styling for the login page
+import { LoginCredentials } from '../../types';
+// import { useAuth } from '../../contexts/AuthContext';
 
 export const LoginPage: React.FC = () => {
-  const { login, isLoading, error, clearError } = useAuth();
+  const { login, clearError, authState } = useAuth(); // Destructure authState here
+  const navigate = useNavigate();
+
   const [formData, setFormData] = useState<LoginCredentials>({
     email: '',
     password: '',
@@ -15,225 +19,105 @@ export const LoginPage: React.FC = () => {
   const [validationErrors, setValidationErrors] = useState<Partial<LoginCredentials>>({});
   const [showPassword, setShowPassword] = useState(false);
 
-  // Handle input changes
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value,
-    }));
-
-    // Clear validation error for this field
-    if (validationErrors[name as keyof LoginCredentials]) {
-      setValidationErrors(prev => ({
-        ...prev,
-        [name]: undefined,
-      }));
+  useEffect(() => {
+    if (authState.isAuthenticated && authState.user) {
+      // Redirect to dashboard or a role-specific page upon successful login
+      // You might want more sophisticated routing based on user role
+      navigate('/dashboard');
     }
+  }, [authState.isAuthenticated, authState.user, navigate]);
 
-    // Clear global error when user starts typing
-    if (error) {
-      clearError();
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+    if (authState.error) {
+      clearError(); // Clear error as user starts typing again
     }
   };
 
-  // Validate form
-  const validateForm = (): boolean => {
-    const errors: Partial<LoginCredentials> = {};
-
-    if (!formData.email.trim()) {
-      errors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      errors.email = 'Please enter a valid email address';
-    }
-
-    if (!formData.password) {
-      errors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      errors.password = 'Password must be at least 6 characters';
-    }
-
-    setValidationErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  // Handle form submission
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-
-    if (!validateForm()) {
-      return;
-    }
-
     try {
-      await login(formData);
-    } catch (error) {
-      // Error is handled by the AuthContext
-      console.error('Login failed:', error);
-    }
-  };
-
-  // Handle demo login for different roles
-  const handleDemoLogin = async (role: string) => {
-    const demoCredentials: Record<string, LoginCredentials> = {
-      superadmin: {
-        email: 'sethna.kola@healthcareplatform.com',
-        password: 'SuperAdmin123!',
-      },
-      admin: {
-        email: 'admin@hospital.com',
-        password: 'Admin123!',
-      },
-      doctor: {
-        email: 'doctor@hospital.com',
-        password: 'Doctor123!',
-      },
-      patient: {
-        email: 'patient@hospital.com',
-        password: 'Patient123!',
-      },
-    };
-
-    const credentials = demoCredentials[role];
-    if (credentials) {
-      setFormData(credentials);
-      try {
-        await login(credentials);
-      } catch (error) {
-        console.error('Demo login failed:', error);
-      }
+      await login(formData.email, formData.password);
+      // No explicit redirect here, useEffect handles it after authState updates
+    } catch (err) {
+      console.error("Login attempt failed:", err);
+      // Error message is handled by AuthContext and displayed
     }
   };
 
   return (
-    <div className="login-page">
-      <div className="login-container">
-        <div className="login-header">
-          <h1>Healthcare MVP</h1>
-          <p>Sign in to your account</p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="login-form">
-          {/* Global Error Message */}
-          {error && (
-            <div className="error-message global-error">
-              <span className="error-icon">⚠️</span>
-              {error}
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-md">
+        <h2 className="text-center text-3xl font-extrabold text-gray-900 mb-6">
+          Sign in to your account
+        </h2>
+        <form className="space-y-6" onSubmit={handleSubmit}> 
+          {authState.error && (
+            <div
+              className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative"
+              role="alert"
+            >
+              <strong className="font-bold">Error:</strong>
+              <span className="block sm:inline ml-2">{authState.error}</span>
+              <span className="absolute top-0 bottom-0 right-0 px-4 py-3" onClick={clearError}>
+                <svg
+                  className="fill-current h-6 w-6 text-red-500"
+                  role="button"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 20 20"
+                >
+                  <title>Close</title>
+                  <path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z" />
+                </svg>
+              </span>
             </div>
           )}
-
-          {/* Email Field */}
-          <div className="form-group">
-            <label htmlFor="email" className="form-label">
-              Email Address
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              Email address
             </label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
-              onChange={handleInputChange}
-              className={`form-input ${validationErrors.email ? 'error' : ''}`}
-              placeholder="Enter your email"
-              disabled={isLoading}
-              autoComplete="email"
-            />
-            {validationErrors.email && (
-              <span className="error-message">{validationErrors.email}</span>
-            )}
+            <div className="mt-1">
+              <input
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                required
+                className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                value={formData.email}
+                onChange={handleChange}
+              />
+            </div>
           </div>
 
-          {/* Password Field */}
-          <div className="form-group">
-            <label htmlFor="password" className="form-label">
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
               Password
             </label>
-            <div className="password-input-container">
+            <div className="mt-1">
               <input
-                type={showPassword ? 'text' : 'password'}
                 id="password"
                 name="password"
-                value={formData.password}
-                onChange={handleInputChange}
-                className={`form-input ${validationErrors.password ? 'error' : ''}`}
-                placeholder="Enter your password"
-                disabled={isLoading}
+                type="password"
                 autoComplete="current-password"
+                required
+                className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                value={formData.password}
+                onChange={handleChange}
               />
-              <button
-                type="button"
-                className="password-toggle"
-                onClick={() => setShowPassword(!showPassword)}
-                disabled={isLoading}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-              >
-                {showPassword ? '👁️' : '👁️‍🗨️'}
-              </button>
             </div>
-            {validationErrors.password && (
-              <span className="error-message">{validationErrors.password}</span>
-            )}
           </div>
 
-          {/* Submit Button */}
-          <button
-            type="submit"
-            className="login-button"
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <>
-                <span className="loading-spinner small"></span>
-                Signing in...
-              </>
-            ) : (
-              'Sign In'
-            )}
-          </button>
+          <div>
+            <button
+              type="submit"
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              disabled={authState.isLoading}
+            >
+              {authState.isLoading ? 'Signing In...' : 'Sign In'}
+            </button>
+          </div>
         </form>
-
-        {/* Demo Login Section */}
-        <div className="demo-section">
-          <div className="demo-header">
-            <span>Demo Accounts</span>
-          </div>
-          <div className="demo-buttons">
-            <button
-              onClick={() => handleDemoLogin('superadmin')}
-              className="demo-button super-admin"
-              disabled={isLoading}
-            >
-              Super Admin
-            </button>
-            <button
-              onClick={() => handleDemoLogin('admin')}
-              className="demo-button admin"
-              disabled={isLoading}
-            >
-              Hospital Admin
-            </button>
-            <button
-              onClick={() => handleDemoLogin('doctor')}
-              className="demo-button doctor"
-              disabled={isLoading}
-            >
-              Doctor
-            </button>
-            <button
-              onClick={() => handleDemoLogin('patient')}
-              className="demo-button patient"
-              disabled={isLoading}
-            >
-              Patient
-            </button>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="login-footer">
-          <p>Healthcare Management System v1.0</p>
-          <p>© 2025 Sethna Kola. All rights reserved.</p>
-        </div>
       </div>
     </div>
   );
