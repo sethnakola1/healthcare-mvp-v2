@@ -1,6 +1,7 @@
 // src/services/patient.service.ts
 import axios, { AxiosResponse } from 'axios';
-import { BaseResponse } from './auth.service';
+import { BaseResponse } from '../types/api.types';
+// import { BaseResponse } from './../auth.service';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
 

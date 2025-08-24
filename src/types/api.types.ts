@@ -28,6 +28,7 @@ export interface PaginatedResponse<T> {
 // }
 
 export interface BaseResponse<T> {
+  accessToken(arg0: string, accessToken: any): unknown;
   success: boolean;
   data?: T;
   error?: string;

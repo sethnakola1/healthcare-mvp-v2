@@ -1,4 +1,5 @@
 import axios, { AxiosResponse } from 'axios';
+import { BaseResponse } from '../types/api.types';
 
 // Base API URL
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';

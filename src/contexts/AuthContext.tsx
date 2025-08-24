@@ -88,4 +88,4 @@ export const useAuth = (): AuthContextType => {
 };
 
 // Export User type for other components
-export { User };
+export type { User };
