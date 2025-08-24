@@ -1,59 +1,30 @@
+// src/App.tsx
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Provider } from 'react-redux';
-import { store } from './store/store';
 import { AuthProvider } from './contexts/AuthContext';
-import LoginForm from './components/auth/LoginForm';
-import ProtectedRoute from './components/auth/ProtectedRoute';
-import SuperAdminDashboard from './components/dashboard/SuperAdminDashboard';
-import DebugPanel from './components/debug/DebugPanel';
+import { useAuth } from './hooks/useAuth';
+import LoginPage from './components/auth/LoginPage';
+import RegisterPage from './components/auth/RegisterPage';
+import LoadingSpinner from './components/common/LoadingSpinner';
 import './App.css';
 
-function App() {
-  return (
-    <Provider store={store}>
-      <AuthProvider>
-        <Router>
-          <div className="App">
-            <Routes>
-              {/* Public Routes */}
-              <Route path="/login" element={<LoginForm />} />
+// Environment configuration
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
 
-              {/* Protected Routes */}
-              <Route
-                path="/dashboard"
-                element={
-                  <ProtectedRoute>
-                    <Dashboard />
-                  </ProtectedRoute>
-                }
-              />
-
-              {/* Super Admin Routes */}
-              <Route
-                path="/admin"
-                element={
-                  <ProtectedRoute requiredRoles={['SUPER_ADMIN']}>
-                    <SuperAdminDashboard />
-                  </ProtectedRoute>
-                }
-              />
-
-              {/* Default redirect */}
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
-
-              {/* Catch all - redirect to login */}
-              <Route path="*" element={<Navigate to="/login" replace />} />
-            </Routes>
-
-            {/* Debug Panel (only in development) */}
-            <DebugPanel />
-          </div>
-        </Router>
-      </AuthProvider>
-    </Provider>
-  );
+// Protected Route Component
+interface ProtectedRouteProps {
+  children: React.ReactNode;
 }
+
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return <LoadingSpinner />;
+  }
+
+  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
+};
 
 // Dashboard component that routes based on user role
 const Dashboard: React.FC = () => {
@@ -63,75 +34,85 @@ const Dashboard: React.FC = () => {
     return <Navigate to="/login" replace />;
   }
 
-  // Route to appropriate dashboard based on role
-  switch (user.role) {
-    case 'SUPER_ADMIN':
-      return <SuperAdminDashboard />;
-    case 'TECH_ADVISOR':
-      return <TechAdvisorDashboard />;
-    case 'HOSPITAL_ADMIN':
-      return <HospitalAdminDashboard />;
-    case 'DOCTOR':
-      return <DoctorDashboard />;
-    case 'NURSE':
-      return <NurseDashboard />;
-    case 'RECEPTIONIST':
-      return <ReceptionistDashboard />;
-    case 'PATIENT':
-      return <PatientDashboard />;
-    default:
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Unknown Role</h2>
-            <p className="text-gray-600 mb-4">Your account role is not recognized.</p>
-            <p className="text-sm text-gray-500">Role: {user.role}</p>
+  return (
+    <div className="dashboard-container">
+      <div className="dashboard-header">
+        <h1>Welcome, {user.firstName}!</h1>
+        <p>Role: {user.role}</p>
+      </div>
+      <div className="dashboard-content">
+        <div className="dashboard-card">
+          <h2>Dashboard</h2>
+          <p>This is your {user.role.toLowerCase()} dashboard.</p>
+          <div className="user-info">
+            <p><strong>Email:</strong> {user.email}</p>
+            <p><strong>User ID:</strong> {user.userId}</p>
+            {user.territory && <p><strong>Territory:</strong> {user.territory}</p>}
+            {user.username && <p><strong>Username:</strong> {user.username}</p>}
           </div>
+          <LogoutButton />
         </div>
-      );
-  }
+      </div>
+    </div>
+  );
 };
 
-// Placeholder dashboard components (you can implement these later)
-const TechAdvisorDashboard: React.FC = () => (
-  <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-    <h1 className="text-2xl font-bold">Tech Advisor Dashboard</h1>
-  </div>
-);
+// Logout Button Component
+const LogoutButton: React.FC = () => {
+  const { logout } = useAuth();
 
-const HospitalAdminDashboard: React.FC = () => (
-  <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-    <h1 className="text-2xl font-bold">Hospital Admin Dashboard</h1>
-  </div>
-);
+  const handleLogout = () => {
+    logout();
+  };
 
-const DoctorDashboard: React.FC = () => (
-  <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-    <h1 className="text-2xl font-bold">Doctor Dashboard</h1>
-  </div>
-);
+  return (
+    <button onClick={handleLogout} className="logout-button">
+      Sign Out
+      <svg className="logout-icon" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M17,7L15.59,8.41L18.17,11H8V13H18.17L15.59,15.59L17,17L22,12L17,7M4,5H12V3H4C2.89,3 2,3.89 2,5V19A2,2 0 0,0 4,21H12V19H4V5Z" />
+      </svg>
+    </button>
+  );
+};
 
-const NurseDashboard: React.FC = () => (
-  <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-    <h1 className="text-2xl font-bold">Nurse Dashboard</h1>
-  </div>
-);
+// Main App Routes
+const AppRoutes: React.FC = () => {
+  return (
+    <Routes>
+      {/* Public routes */}
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
 
-const ReceptionistDashboard: React.FC = () => (
-  <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-    <h1 className="text-2xl font-bold">Receptionist Dashboard</h1>
-  </div>
-);
+      {/* Protected routes */}
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        }
+      />
 
-const PatientDashboard: React.FC = () => (
-  <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-    <h1 className="text-2xl font-bold">Patient Dashboard</h1>
-  </div>
-);
+      {/* Default redirect */}
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-// Import useAuth hook
-function useAuth() {
-  return React.useContext(require('./contexts/AuthContext').AuthContext);
-}
+      {/* 404 fallback */}
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+    </Routes>
+  );
+};
+
+// Main App Component
+const App: React.FC = () => {
+  return (
+    <div className="App">
+      <Router>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </Router>
+    </div>
+  );
+};
 
 export default App;

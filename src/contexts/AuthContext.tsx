@@ -1,74 +1,147 @@
-import React, { createContext, useContext, useEffect, ReactNode } from 'react';
-import { useAppDispatch, useAppSelector } from '../store/hooks';
-import {
-  loginUser,
-  getCurrentUser,
-  logoutUser,
-  clearError,
-  initializeAuth,
-  selectAuth
-} from '../store/slices/authSlice';
-import { User } from '../services/auth.service';
+// src/contexts/AuthContext.tsx
+import React, { createContext, useState, useEffect, ReactNode } from 'react';
+import { authService, LoginRequest, User } from '../services/auth.service';
 
 // Context type
 export interface AuthContextType {
   user: User | null;
+  token: string | null;
+  login: (credentials: LoginRequest) => Promise<void>;
+  logout: () => void;
+  loading: boolean;
   isAuthenticated: boolean;
-  isLoading: boolean;
-  error: string | null;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
-  clearError: () => void;
-  refreshUser: () => Promise<void>;
+  registerUser: (userData: any) => Promise<void>;
+  refreshToken: () => Promise<void>;
 }
 
-// Create context
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+interface AuthProviderProps {
+  children: ReactNode;
+}
 
-// Provider component
-export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const dispatch = useAppDispatch();
-  const { user, isAuthenticated, isLoading, error } = useAppSelector(selectAuth);
+export const AuthContext = createContext<AuthContextType | null>(null);
 
-  // Initialize auth state from localStorage on mount
+export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(localStorage.getItem('accessToken'));
+  const [loading, setLoading] = useState(true);
+
+  const isAuthenticated = Boolean(token && user);
+
   useEffect(() => {
-    dispatch(initializeAuth());
+    const initAuth = async () => {
+      const storedToken = localStorage.getItem('accessToken');
+      const storedUser = localStorage.getItem('user');
 
-    // If we have a token but no user, try to get current user
-    const token = localStorage.getItem('accessToken');
-    if (token && !user) {
-      dispatch(getCurrentUser());
+      if (storedToken && storedUser) {
+        try {
+          const userData = JSON.parse(storedUser);
+          setToken(storedToken);
+          setUser(userData);
+
+          // Verify token is still valid
+          await authService.validateToken();
+        } catch (error) {
+          console.error('Token validation failed:', error);
+          logout();
+        }
+      }
+      setLoading(false);
+    };
+
+    initAuth();
+  }, []);
+
+  const login = async (credentials: LoginRequest): Promise<void> => {
+    try {
+      setLoading(true);
+      const response = await authService.login(credentials);
+
+      if (response.success && response.data) {
+        const { accessToken, refreshToken: newRefreshToken, ...userData } = response.data;
+
+        // Store tokens securely
+        localStorage.setItem('accessToken', accessToken);
+        localStorage.setItem('refreshToken', newRefreshToken);
+        localStorage.setItem('user', JSON.stringify(userData));
+
+        setToken(accessToken);
+        setUser(userData);
+      } else {
+        throw new Error(response.message || 'Login failed');
+      }
+    } catch (error: any) {
+      console.error('Login error:', error);
+      throw new Error(error.message || 'Login failed');
+    } finally {
+      setLoading(false);
     }
-  }, [dispatch, user]);
+  };
 
-  // Context value
+  const logout = (): void => {
+    // Clear all stored data
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('user');
+
+    setToken(null);
+    setUser(null);
+  };
+
+  const registerUser = async (userData: any): Promise<void> => {
+    try {
+      setLoading(true);
+      const response = await authService.register(userData);
+
+      if (response.success) {
+        // Optionally auto-login after registration
+        // await login({ email: userData.email, password: userData.password });
+      } else {
+        throw new Error(response.message || 'Registration failed');
+      }
+    } catch (error: any) {
+      console.error('Registration error:', error);
+      throw new Error(error.message || 'Registration failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const refreshToken = async (): Promise<void> => {
+    try {
+      const storedRefreshToken = localStorage.getItem('refreshToken');
+      if (!storedRefreshToken) {
+        throw new Error('No refresh token available');
+      }
+
+      const response = await authService.refreshToken({ refreshToken: storedRefreshToken });
+
+      if (response.success && response.data) {
+        const { accessToken, refreshToken: newRefreshToken } = response.data;
+
+        localStorage.setItem('accessToken', accessToken);
+        if (newRefreshToken) {
+          localStorage.setItem('refreshToken', newRefreshToken);
+        }
+
+        setToken(accessToken);
+      } else {
+        logout();
+      }
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+      logout();
+    }
+  };
+
   const contextValue: AuthContextType = {
     user,
+    token,
+    login,
+    logout,
+    loading,
     isAuthenticated,
-    isLoading,
-    error,
-
-    login: async (email: string, password: string) => {
-      const result = await dispatch(loginUser({ email, password }));
-      if (loginUser.fulfilled.match(result)) {
-        // Login successful, get user details
-        await dispatch(getCurrentUser());
-      } else {
-        throw new Error(result.payload || 'Login failed');
-      }
-    },
-
-    logout: async () => {
-      await dispatch(logoutUser());
-    },
-
-    clearError: () => {
-      dispatch(clearError());
-    },
-
-    refreshUser: async () => {
-      await dispatch(getCurrentUser());
-    },
+    registerUser,
+    refreshToken
   };
 
   return (
@@ -78,14 +151,5 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   );
 };
 
-// Hook to use auth context
-export const useAuth = (): AuthContextType => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
-
-// Export User type for other components
-export type { User };
+// Default export for the context
+export default AuthContext;

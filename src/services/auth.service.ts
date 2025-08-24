@@ -1,7 +1,7 @@
-import axios, { AxiosResponse } from 'axios';
-import { BaseResponse } from '../types/api.types';
+// src/services/auth.service.ts
+import axios, { AxiosInstance, AxiosResponse } from 'axios';
 
-// Base API URL
+// Base API URL - adjust according to your backend
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
 
 // Types
@@ -11,9 +11,6 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  success: any;
-  data: { [x: string]: any; accessToken: any; refreshToken: any; };
-  message: string;
   accessToken: string;
   refreshToken: string;
   tokenType: string;
@@ -24,6 +21,35 @@ export interface LoginResponse {
   lastName: string;
   role: string;
   loginTime: string;
+}
+
+export interface RefreshTokenRequest {
+  refreshToken: string;
+}
+
+export interface ApiResponse<T> {
+  success: boolean;
+  message: string;
+  data?: T;
+  error?: string;
+  timestamp?: string;
+}
+
+export interface User {
+  userId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  fullName?: string;
+  username?: string;
+  isActive?: boolean;
+  emailVerified?: boolean;
+  phoneNumber?: string;
+  territory?: string;
+  partnerCode?: string;
+  lastLogin?: string;
+  createdAt?: string;
 }
 
 export interface RegisterRequest {
@@ -38,70 +64,27 @@ export interface RegisterRequest {
   role: 'SUPER_ADMIN' | 'TECH_ADVISOR';
 }
 
-export interface User {
-  userId: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  fullName: string;
-  username: string;
-  role: string;
-  roleDisplayName: string;
-  isActive: boolean;
-  emailVerified: boolean;
-  phoneNumber?: string;
-  territory?: string;
-  partnerCode?: string;
-  lastLogin?: string;
-  createdAt?: string;
-}
-
-export interface UserInfo {
-  success: any;
-  data: User;
-  userId: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  fullName: string;
-  username: string;
-  role: string;
-  roleDisplayName: string;
-  isActive: boolean;
-  emailVerified: boolean;
-  phoneNumber?: string;
-  territory?: string;
-  partnerCode?: string;
-  lastLogin?: string;
-  createdAt?: string;
-}
-
-export interface ApiResponse<T> {
-  success: boolean;
-  message: string;
-  data?: T;
-  error?: string;
-  errorCode?: string;
-  timestamp: string;
-}
-
-export interface RefreshTokenRequest {
-  refreshToken: string;
-}
-
 class AuthService {
-  private api = axios.create({
-    baseURL: API_BASE_URL,
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
+  private api: AxiosInstance;
+  private refreshPromise: Promise<any> | null = null;
 
   constructor() {
-    // Add request interceptor to include auth token
+    this.api = axios.create({
+      baseURL: API_BASE_URL,
+      timeout: 30000,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    this.setupInterceptors();
+  }
+
+  private setupInterceptors(): void {
+    // Request interceptor to add auth token
     this.api.interceptors.request.use(
       (config) => {
-        const token = localStorage.getItem('accessToken');
+        const token = this.getStoredToken();
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
         }
@@ -112,9 +95,11 @@ class AuthService {
       }
     );
 
-    // Add response interceptor to handle token refresh
+    // Response interceptor for token refresh
     this.api.interceptors.response.use(
-      (response) => response,
+      (response) => {
+        return response;
+      },
       async (error) => {
         const originalRequest = error.config;
 
@@ -122,15 +107,25 @@ class AuthService {
           originalRequest._retry = true;
 
           try {
-            const refreshToken = localStorage.getItem('refreshToken');
+            const refreshToken = this.getStoredRefreshToken();
             if (refreshToken) {
-              const response = await this.refreshToken({ refreshToken });
-              localStorage.setItem('accessToken', response.data.accessToken);
-              originalRequest.headers.Authorization = `Bearer ${response.data.accessToken}`;
-              return this.api(originalRequest);
+              // Prevent multiple refresh requests
+              if (!this.refreshPromise) {
+                this.refreshPromise = this.refreshToken({ refreshToken });
+              }
+
+              const response = await this.refreshPromise;
+              this.refreshPromise = null;
+
+              if (response.success && response.data?.accessToken) {
+                this.setStoredToken(response.data.accessToken);
+                originalRequest.headers.Authorization = `Bearer ${response.data.accessToken}`;
+                return this.api(originalRequest);
+              }
             }
           } catch (refreshError) {
-            this.logout();
+            console.error('Token refresh failed:', refreshError);
+            this.clearTokens();
             window.location.href = '/login';
           }
         }
@@ -140,87 +135,154 @@ class AuthService {
     );
   }
 
-  async login(email: string, password: string): Promise<AxiosResponse<BaseResponse<LoginResponse>>> {
-    const response = await this.api.post<BaseResponse<LoginResponse>>('/auth/login', {
-      email,
-      password,
-    });
-    return response;
-  }
-
-  async refreshToken(request: RefreshTokenRequest): Promise<AxiosResponse<BaseResponse<LoginResponse>>> {
-    const response = await this.api.post<BaseResponse<LoginResponse>>('/auth/refresh', request);
-    return response;
-  }
-
-  async getCurrentUser(): Promise<AxiosResponse<BaseResponse<User>>> {
-    const response = await this.api.get<BaseResponse<User>>('/auth/me');
-    return response;
-  }
-
-  async logout(): Promise<AxiosResponse<BaseResponse<string>>> {
-    try {
-      const response = await this.api.post<BaseResponse<string>>('/auth/logout');
-      return response;
-    } finally {
-      // Clear local storage regardless of API response
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('user');
-    }
-  }
-
-  async changePassword(currentPassword: string, newPassword: string): Promise<AxiosResponse<BaseResponse<string>>> {
-    const response = await this.api.post<BaseResponse<string>>('/auth/change-password', {
-      currentPassword,
-      newPassword,
-    });
-    return response;
-  }
-
-  async validateToken(): Promise<AxiosResponse<BaseResponse<boolean>>> {
-    const response = await this.api.get<BaseResponse<boolean>>('/auth/validate');
-    return response;
-  }
-
-  // Utility methods
-  isAuthenticated(): boolean {
-    const token = localStorage.getItem('accessToken');
-    const user = localStorage.getItem('user');
-    return !!(token && user);
-  }
-
-  getToken(): string | null {
+  // Secure token storage methods
+  private getStoredToken(): string | null {
     return localStorage.getItem('accessToken');
   }
 
-  getUser(): User | null {
-    const userStr = localStorage.getItem('user');
-    if (userStr) {
-      try {
-        return JSON.parse(userStr);
-      } catch (e) {
-        console.error('Error parsing user from localStorage:', e);
-        return null;
-      }
-    }
-    return null;
+  private setStoredToken(token: string): void {
+    localStorage.setItem('accessToken', token);
   }
 
-  setTokens(accessToken: string, refreshToken: string): void {
-    localStorage.setItem('accessToken', accessToken);
-    localStorage.setItem('refreshToken', refreshToken);
+  private getStoredRefreshToken(): string | null {
+    return localStorage.getItem('refreshToken');
   }
 
-  setUser(user: User): void {
-    localStorage.setItem('user', JSON.stringify(user));
-  }
-
-  clearAuth(): void {
+  private clearTokens(): void {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
   }
+
+  // Auth methods
+  public async login(credentials: LoginRequest): Promise<ApiResponse<LoginResponse>> {
+    try {
+      const response: AxiosResponse<ApiResponse<LoginResponse>> = await this.api.post(
+        '/auth/login',
+        credentials
+      );
+
+      // Enhanced error handling
+      if (response.data.success && response.data.data) {
+        return response.data;
+      } else {
+        throw new Error(response.data.message || 'Login failed');
+      }
+    } catch (error: any) {
+      console.error('Login service error:', error);
+
+      // Handle different error scenarios
+      if (error.response?.status === 401) {
+        throw new Error('Invalid email or password');
+      } else if (error.response?.status === 423) {
+        throw new Error('Account is temporarily locked. Please try again later.');
+      } else if (error.response?.status >= 500) {
+        throw new Error('Server error. Please try again later.');
+      } else if (error.response?.data?.message) {
+        throw new Error(error.response.data.message);
+      } else if (error.message) {
+        throw new Error(error.message);
+      } else {
+        throw new Error('Network error. Please check your connection.');
+      }
+    }
+  }
+
+  public async refreshToken(request: RefreshTokenRequest): Promise<ApiResponse<LoginResponse>> {
+    try {
+      const response: AxiosResponse<ApiResponse<LoginResponse>> = await this.api.post(
+        '/auth/refresh',
+        request
+      );
+      return response.data;
+    } catch (error: any) {
+      console.error('Token refresh error:', error);
+      throw new Error(error.response?.data?.message || 'Token refresh failed');
+    }
+  }
+
+  public async register(userData: RegisterRequest): Promise<ApiResponse<any>> {
+    try {
+      const response: AxiosResponse<ApiResponse<any>> = await this.api.post(
+        '/auth/register',
+        userData
+      );
+      return response.data;
+    } catch (error: any) {
+      console.error('Registration error:', error);
+      throw new Error(error.response?.data?.message || 'Registration failed');
+    }
+  }
+
+  public async getCurrentUser(): Promise<ApiResponse<User>> {
+    try {
+      const response: AxiosResponse<ApiResponse<User>> = await this.api.get('/auth/me');
+      return response.data;
+    } catch (error: any) {
+      console.error('Get current user error:', error);
+      throw new Error(error.response?.data?.message || 'Failed to get user information');
+    }
+  }
+
+  public async validateToken(): Promise<ApiResponse<boolean>> {
+    try {
+      const response: AxiosResponse<ApiResponse<boolean>> = await this.api.get('/auth/validate');
+      return response.data;
+    } catch (error: any) {
+      console.error('Token validation error:', error);
+      throw new Error('Token validation failed');
+    }
+  }
+
+  public async logout(): Promise<void> {
+    try {
+      await this.api.post('/auth/logout');
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Continue with local logout even if server logout fails
+    } finally {
+      this.clearTokens();
+    }
+  }
+
+  public async changePassword(currentPassword: string, newPassword: string): Promise<ApiResponse<string>> {
+    try {
+      const response: AxiosResponse<ApiResponse<string>> = await this.api.post(
+        '/auth/change-password',
+        { currentPassword, newPassword }
+      );
+      return response.data;
+    } catch (error: any) {
+      console.error('Change password error:', error);
+      throw new Error(error.response?.data?.message || 'Failed to change password');
+    }
+  }
+
+  // Utility methods
+  public isAuthenticated(): boolean {
+    return Boolean(this.getStoredToken());
+  }
+
+  public getAuthHeader(): string | null {
+    const token = this.getStoredToken();
+    return token ? `Bearer ${token}` : null;
+  }
+
+  // Security utilities
+  public isTokenExpired(): boolean {
+    const token = this.getStoredToken();
+    if (!token) return true;
+
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const currentTime = Date.now() / 1000;
+      return payload.exp < currentTime;
+    } catch (error) {
+      console.error('Error checking token expiration:', error);
+      return true;
+    }
+  }
 }
 
-export default new AuthService();
+export const authService = new AuthService();
+export default authService;
