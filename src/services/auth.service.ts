@@ -11,16 +11,16 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  accessToken: string;
-  refreshToken: string;
-  tokenType: string;
-  expiresIn: number;
-  userId: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  role: string;
-  loginTime: string;
+accessToken: string;
+refreshToken: string;
+tokenType: string;
+expiresIn: number;
+userId: string;
+email: string;
+firstName: string;
+lastName: string;
+role: string;
+loginTime: string;
 }
 
 export interface RefreshTokenRequest {
@@ -28,11 +28,13 @@ export interface RefreshTokenRequest {
 }
 
 export interface ApiResponse<T> {
-  success: boolean;
-  message: string;
-  data?: T;
-  error?: string;
-  timestamp?: string;
+success: boolean;
+message: string;
+data?: T;
+error?: string;
+errorCode?: string;
+timestamp: string;
+path?: string;
 }
 
 export interface User {
@@ -65,6 +67,14 @@ export interface RegisterRequest {
 }
 
 class AuthService {
+
+private baseURL: string;
+
+constructor() {
+this.baseURL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
+}
+
+
   private api: AxiosInstance;
   private refreshPromise: Promise<any> | null = null;
 
@@ -79,6 +89,30 @@ class AuthService {
 
     this.setupInterceptors();
   }
+
+
+private async makeRequest<T>(
+endpoint: string,
+options: RequestInit = {}
+): Promise<ApiResponse<T>> {
+const url = ${this.baseURL}${endpoint};
+const config: RequestInit = {
+  headers: {
+    'Content-Type': 'application/json',
+    ...options.headers,
+  },
+  ...options,
+};
+
+const response = await fetch(url, config);
+const data = await response.json();
+
+if (!response.ok) {
+  throw new Error(data.message || data.error || `HTTP ${response.status}`);
+}
+
+return data;
+}
 
   private setupInterceptors(): void {
     // Request interceptor to add auth token
@@ -154,6 +188,13 @@ class AuthService {
     localStorage.removeItem('user');
   }
 
+async login(credentials: LoginRequest): Promise<ApiResponse<LoginResponse>> {
+return this.makeRequest<LoginResponse>('/api/auth/login', {
+method: 'POST',
+body: JSON.stringify(credentials),
+});
+}
+
   // Auth methods
   public async login(credentials: LoginRequest): Promise<ApiResponse<LoginResponse>> {
     try {
@@ -188,6 +229,12 @@ class AuthService {
     }
   }
 
+async refreshToken(refreshToken: string): Promise<ApiResponse<LoginResponse>> {
+return this.makeRequest<LoginResponse>('/api/auth/refresh', {
+method: 'POST',
+body: JSON.stringify({ refreshToken }),
+});
+}
   public async refreshToken(request: RefreshTokenRequest): Promise<ApiResponse<LoginResponse>> {
     try {
       const response: AxiosResponse<ApiResponse<LoginResponse>> = await this.api.post(
@@ -214,6 +261,14 @@ class AuthService {
     }
   }
 
+async getCurrentUser(token: string): Promise<ApiResponse<any>> {
+return this.makeRequest<any>('/api/auth/me', {
+method: 'GET',
+headers: {
+Authorization: Bearer ${token},
+},
+});
+}
   public async getCurrentUser(): Promise<ApiResponse<User>> {
     try {
       const response: AxiosResponse<ApiResponse<User>> = await this.api.get('/auth/me');
@@ -223,7 +278,14 @@ class AuthService {
       throw new Error(error.response?.data?.message || 'Failed to get user information');
     }
   }
-
+async validateToken(token: string): Promise<ApiResponse<boolean>> {
+return this.makeRequest<boolean>('/api/auth/validate', {
+method: 'GET',
+headers: {
+Authorization: Bearer ${token},
+},
+});
+}
   public async validateToken(): Promise<ApiResponse<boolean>> {
     try {
       const response: AxiosResponse<ApiResponse<boolean>> = await this.api.get('/auth/validate');
@@ -233,6 +295,17 @@ class AuthService {
       throw new Error('Token validation failed');
     }
   }
+
+
+
+async logout(token: string): Promise<ApiResponse<string>> {
+return this.makeRequest<string>('/api/auth/logout', {
+method: 'POST',
+headers: {
+Authorization: Bearer ${token},
+},
+});
+}
 
   public async logout(): Promise<void> {
     try {
@@ -282,6 +355,42 @@ class AuthService {
       return true;
     }
   }
+
+
+// Token storage helpers
+static setTokens(accessToken: string, refreshToken: string): void {
+localStorage.setItem('accessToken', accessToken);
+localStorage.setItem('refreshToken', refreshToken);
+}
+
+static getAccessToken(): string | null {
+return localStorage.getItem('accessToken');
+}
+
+static getRefreshToken(): string | null {
+return localStorage.getItem('refreshToken');
+}
+
+static clearTokens(): void {
+localStorage.removeItem('accessToken');
+localStorage.removeItem('refreshToken');
+localStorage.removeItem('tokenType');
+localStorage.removeItem('expiresIn');
+localStorage.removeItem('user');
+}
+
+static setUser(user: any): void {
+localStorage.setItem('user', JSON.stringify(user));
+}
+
+static getUser(): any | null {
+const userStr = localStorage.getItem('user');
+return userStr ? JSON.parse(userStr) : null;
+}
+
+static clearAuth(): void {
+this.clearTokens();
+}
 }
 
 export const authService = new AuthService();

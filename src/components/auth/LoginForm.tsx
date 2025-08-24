@@ -1,10 +1,10 @@
-import React, { useState, FormEvent, ChangeEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
-import  useAuth  from '../../contexts/AuthContext';
-
+import React, { useState, useEffect, ChangeEvent, FormEvent } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
+import './LoginForm.css';
 interface LoginFormData {
-  email: string;
-  password: string;
+email: string;
+password: string;
 }
 
 interface Credentials {
@@ -15,171 +15,159 @@ interface Credentials {
 }
 
 const LoginForm: React.FC = () => {
-  const [formData, setFormData] = useState<LoginFormData>({
-    email: '',
-    password: '',
-  });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-
-  const { login, clearError } = useAuth();
-  const navigate = useNavigate();
-
-  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
-    // Clear any existing errors when user starts typing
-    if (error) {
-      setError('');
-      clearError();
-    }
-  };
-
-  const handleSubmit = async (e: FormEvent<HTMLFormElement> | { preventDefault: () => void }) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-
-    try {
-      await login(formData.email, formData.password);
-      navigate('/dashboard');
-    } catch (err: unknown) {
-      console.error('Login failed:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Login failed. Please try again.';
-      setError(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Quick login buttons for testing
-  const quickLogin = async (role: keyof Credentials) => {
-    const credentials: Credentials = {
-      SUPER_ADMIN: { email: 'sethna.kola@healthcareplatform.com', password: 'SuperAdmin123!' }
-    };
-
-    if (credentials[role]) {
-      setFormData(credentials[role]);
-      // Auto-submit after setting credentials
-      setTimeout(() => {
-        handleSubmit({ preventDefault: () => {} });
-      }, 100);
-    }
-  };
-
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Sign in to Healthcare Platform
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Access your healthcare management dashboard
-          </p>
-        </div>
-
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="rounded-md shadow-sm -space-y-px">
-            <div>
-              <label htmlFor="email" className="sr-only">
-                Email address
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                value={formData.email}
-                onChange={handleChange}
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Email address"
-                disabled={loading}
-              />
-            </div>
-            <div>
-              <label htmlFor="password" className="sr-only">
-                Password
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Password"
-                value={formData.password}
-                onChange={handleChange}
-                disabled={loading}
-              />
-            </div>
-          </div>
-
-          {error && (
-            <div className="rounded-md bg-red-50 p-4">
-              <div className="flex">
-                <div className="ml-3">
-                  <h3 className="text-sm font-medium text-red-800">
-                    Authentication Error
-                  </h3>
-                  <div className="mt-2 text-sm text-red-700">
-                    <p>{error}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? (
-                <span className="flex items-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Signing in...
-                </span>
-              ) : (
-                'Sign in'
-              )}
-            </button>
-          </div>
-
-          {/* Quick Login for Testing */}
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-gray-50 text-gray-500">Quick Login (Testing)</span>
-              </div>
-            </div>
-
-            <div className="mt-6">
-              <button
-                type="button"
-                onClick={() => quickLogin('SUPER_ADMIN')}
-                disabled={loading}
-                className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
-              >
-                Login as Super Admin
-              </button>
-            </div>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
+const [formData, setFormData] = useState<LoginFormData>({
+email: '',
+password: '',
+});
+const [showPassword, setShowPassword] = useState(false);
+const [rememberMe, setRememberMe] = useState(false);
+const { login, loading, error, clearError, isAuthenticated } = useAuth();
+const navigate = useNavigate();
+const location = useLocation();
+// Redirect if already authenticated
+useEffect(() => {
+if (isAuthenticated) {
+const from = (location.state as any)?.from?.pathname || '/dashboard';
+navigate(from, { replace: true });
+}
+}, [isAuthenticated, navigate, location]);
+// Clear error when component unmounts or form changes
+useEffect(() => {
+return () => clearError();
+}, [clearError]);
+useEffect(() => {
+if (error) {
+const timer = setTimeout(clearError, 5000); // Clear error after 5 seconds
+return () => clearTimeout(timer);
+}
+}, [error, clearError]);
+const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+const { name, value } = e.target;
+setFormData(prev => ({
+...prev,
+[name]: value,
+}));
+// Clear error when user starts typing
+if (error) {
+  clearError();
+}
 };
+const handleSubmit = async (e: FormEvent) => {
+e.preventDefault();
+// Basic validation
+if (!formData.email.trim() || !formData.password.trim()) {
+  return;
+}
 
+try {
+  await login(formData);
+  // Navigation will be handled by the useEffect above
+} catch (error) {
+  // Error handling is managed by the AuthContext
+  console.error('Login failed:', error);
+}
+};
+const togglePasswordVisibility = () => {
+setShowPassword(!showPassword);
+};
+return (
+<div className="login-container">
+<div className="login-card">
+<div className="login-header">
+<h1>HealthHorizon</h1>
+<p>Healthcare Management System</p>
+</div>
+    <form className="login-form" onSubmit={handleSubmit}>
+      <h2>Sign In</h2>
+
+      {error && (
+        <div className="error-message">
+          <span className="error-icon">⚠️</span>
+          {error}
+        </div>
+      )}
+
+      <div className="form-group">
+        <label htmlFor="email">Email Address</label>
+        <input
+          type="email"
+          id="email"
+          name="email"
+          value={formData.email}
+          onChange={handleChange}
+          required
+          placeholder="Enter your email"
+          disabled={loading}
+          autoComplete="email"
+        />
+      </div>
+
+      <div className="form-group">
+        <label htmlFor="password">Password</label>
+        <div className="password-input-container">
+          <input
+            type={showPassword ? 'text' : 'password'}
+            id="password"
+            name="password"
+            value={formData.password}
+            onChange={handleChange}
+            required
+            placeholder="Enter your password"
+            disabled={loading}
+            autoComplete="current-password"
+          />
+          <button
+            type="button"
+            className="password-toggle"
+            onClick={togglePasswordVisibility}
+            disabled={loading}
+            aria-label={showPassword ? 'Hide password' : 'Show password'}
+          >
+            {showPassword ? '👁️' : '👁️‍🗨️'}
+          </button>
+        </div>
+      </div>
+
+      <div className="form-options">
+        <label className="remember-me">
+          <input
+            type="checkbox"
+            checked={rememberMe}
+            onChange={(e) => setRememberMe(e.target.checked)}
+            disabled={loading}
+          />
+          Remember me
+        </label>
+        <a href="/forgot-password" className="forgot-password">
+          Forgot password?
+        </a>
+      </div>
+
+      <button
+        type="submit"
+        className={`login-button ${loading ? 'loading' : ''}`}
+        disabled={loading || !formData.email.trim() || !formData.password.trim()}
+      >
+        {loading ? (
+          <>
+            <span className="spinner"></span>
+            Signing in...
+          </>
+        ) : (
+          'Sign In'
+        )}
+      </button>
+
+      <div className="login-help">
+        <p>Test Credentials:</p>
+        <small>
+          Email: sethnakola@healthhorizon.com<br />
+          Password: SuperAdmin123!
+        </small>
+      </div>
+    </form>
+  </div>
+</div>
+);
+};
 export default LoginForm;
