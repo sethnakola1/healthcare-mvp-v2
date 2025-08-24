@@ -68,11 +68,11 @@ export interface RegisterRequest {
 
 class AuthService {
 
-private baseURL: string;
+// private baseURL: string;
 
-constructor() {
-this.baseURL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
-}
+// constructor() {
+// this.baseURL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
+// }
 
 
   private api: AxiosInstance;
@@ -92,10 +92,10 @@ this.baseURL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
 
 
 private async makeRequest<T>(
-endpoint: string,
+newEndpoint: string,
 options: RequestInit = {}
 ): Promise<ApiResponse<T>> {
-const url = ${this.baseURL}${endpoint};
+const url = this.api.defaults.baseURL + newEndpoint;
 const config: RequestInit = {
   headers: {
     'Content-Type': 'application/json',
@@ -188,12 +188,12 @@ return data;
     localStorage.removeItem('user');
   }
 
-async login(credentials: LoginRequest): Promise<ApiResponse<LoginResponse>> {
-return this.makeRequest<LoginResponse>('/api/auth/login', {
-method: 'POST',
-body: JSON.stringify(credentials),
-});
-}
+// async login(credentials: LoginRequest): Promise<ApiResponse<LoginResponse>> {
+// return this.makeRequest<LoginResponse>('/api/auth/login', {
+// method: 'POST',
+// body: JSON.stringify(credentials),
+// });
+// }
 
   // Auth methods
   public async login(credentials: LoginRequest): Promise<ApiResponse<LoginResponse>> {
@@ -229,12 +229,12 @@ body: JSON.stringify(credentials),
     }
   }
 
-async refreshToken(refreshToken: string): Promise<ApiResponse<LoginResponse>> {
-return this.makeRequest<LoginResponse>('/api/auth/refresh', {
-method: 'POST',
-body: JSON.stringify({ refreshToken }),
-});
-}
+// async refreshToken(refreshToken: string): Promise<ApiResponse<LoginResponse>> {
+// return this.makeRequest<LoginResponse>('/api/auth/refresh', {
+// method: 'POST',
+// body: JSON.stringify({ refreshToken }),
+// });
+// }
   public async refreshToken(request: RefreshTokenRequest): Promise<ApiResponse<LoginResponse>> {
     try {
       const response: AxiosResponse<ApiResponse<LoginResponse>> = await this.api.post(
@@ -261,14 +261,15 @@ body: JSON.stringify({ refreshToken }),
     }
   }
 
-async getCurrentUser(token: string): Promise<ApiResponse<any>> {
-return this.makeRequest<any>('/api/auth/me', {
-method: 'GET',
-headers: {
-Authorization: Bearer ${token},
-},
-});
-}
+// async getCurrentUser(token: string): Promise<ApiResponse<any>> {
+// return this.makeRequest<any>('/api/auth/me', {
+// method: 'GET',
+// headers: {
+// Authorization: Bearer ${token},
+// },
+// });
+// }
+
   public async getCurrentUser(): Promise<ApiResponse<User>> {
     try {
       const response: AxiosResponse<ApiResponse<User>> = await this.api.get('/auth/me');
@@ -278,14 +279,16 @@ Authorization: Bearer ${token},
       throw new Error(error.response?.data?.message || 'Failed to get user information');
     }
   }
-async validateToken(token: string): Promise<ApiResponse<boolean>> {
-return this.makeRequest<boolean>('/api/auth/validate', {
-method: 'GET',
-headers: {
-Authorization: Bearer ${token},
-},
-});
-}
+
+  // async validateToken(token: string): Promise<ApiResponse<boolean>> {
+// return this.makeRequest<boolean>('/api/auth/validate', {
+// method: 'GET',
+// headers: {
+// Authorization: Bearer ${token},
+// },
+// });
+// }
+
   public async validateToken(): Promise<ApiResponse<boolean>> {
     try {
       const response: AxiosResponse<ApiResponse<boolean>> = await this.api.get('/auth/validate');
@@ -298,14 +301,14 @@ Authorization: Bearer ${token},
 
 
 
-async logout(token: string): Promise<ApiResponse<string>> {
-return this.makeRequest<string>('/api/auth/logout', {
-method: 'POST',
-headers: {
-Authorization: Bearer ${token},
-},
-});
-}
+// async logout(token: string): Promise<ApiResponse<string>> {
+// return this.makeRequest<string>('/api/auth/logout', {
+// method: 'POST',
+// headers: {
+// Authorization: Bearer ${token},
+// },
+// });
+// }
 
   public async logout(): Promise<void> {
     try {
