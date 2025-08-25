@@ -12,7 +12,6 @@ export interface Patient {
   phone: string;
   dateOfBirth: string;
   gender: Gender;
-  email?: string;
   phoneNumber?: string;
   address?: string;
   bloodGroup?: BloodGroup;
@@ -63,7 +62,6 @@ export interface CreatePatientData {
   phone: string;
   dateOfBirth: string;
   gender?: Gender;
-  email?: string;
   phoneNumber?: string;
   address?: string;
   bloodGroup?: BloodGroup;

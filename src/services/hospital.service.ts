@@ -1,6 +1,7 @@
 // src/services/hospital.service.ts
 import axios, { AxiosResponse } from 'axios';
-import { BaseResponse } from '../types/api.types';
+import ApiResponse, { BaseResponse } from '../types/api.types';
+import { apiService } from './api.service';
 // import { BaseResponse } from './auth.service';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
@@ -55,6 +56,7 @@ export interface HospitalDto {
 
 class HospitalService {
   private readonly baseURL: string;
+  endpoint: any;
 
   constructor() {
     this.baseURL = `${API_BASE_URL}/hospitals`;

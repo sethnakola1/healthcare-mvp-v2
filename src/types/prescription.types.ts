@@ -80,7 +80,6 @@ export interface CreatePrescriptionRequest {
   patientId: string;
   doctorId: string;
   hospitalId: string;
-  appointmentId?: string;
   medicalRecordId?: string;
   medications: Omit<PrescriptionMedication, 'id'>[];
   instructions: string;

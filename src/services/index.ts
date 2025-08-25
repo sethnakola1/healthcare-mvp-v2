@@ -1,5 +1,5 @@
 // src/services/index.ts
-export { default as apiService } from './api.service';
+// export { default as apiService } from './api.service';
 export { default as appointmentService } from './appointment.service';
 export { default as doctorService } from './doctor.service';
 export { default as hospitalService } from './hospital.service';

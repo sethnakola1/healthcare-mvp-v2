@@ -1,6 +1,10 @@
 // src/types/appointment.types.ts
 
+import { Key, ReactNode } from "react";
+
 export interface Appointment {
+  id: Key | null | undefined;
+  type: ReactNode;
   appointmentId: string;
   hospitalId: string;
   hospitalName?: string;

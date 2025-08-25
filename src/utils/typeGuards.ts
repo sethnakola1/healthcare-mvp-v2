@@ -5,7 +5,7 @@ import { Doctor } from '../types/doctor.types';
 import { Hospital } from '../types/hospital.types';
 import { Appointment, AppointmentStatus, AppointmentType } from '../types/appointment.types';
 import { Bill, BillStatus } from '../types/billing.types';
-import { Prescription, PrescriptionStatus } from '../types/prescription.types';
+import { PrescriptionDto, PrescriptionStatus } from '../types/prescription.types';
 
 // Patient type guards
 export const isPatient = (obj: any): obj is Patient => {
@@ -98,7 +98,7 @@ export const isBillStatus = (status: any): status is BillStatus => {
 };
 
 // Prescription type guards
-export const isPrescription = (obj: any): obj is Prescription => {
+export const isPrescription = (obj: any): obj is PrescriptionDto => {
   return obj &&
     typeof obj.id === 'string' &&
     typeof obj.patientId === 'string' &&

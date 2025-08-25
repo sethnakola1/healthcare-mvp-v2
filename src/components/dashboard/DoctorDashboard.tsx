@@ -268,11 +268,11 @@ const DoctorDashboard: React.FC = () => {
                 <div key={appointment.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <div>
                     <p className="font-medium text-gray-800">
-                      {appointment.patient?.firstName} {appointment.patient?.lastName}
+                      {appointment.patientId?.firstName} {appointment.patientId?.lastName}
                     </p>
                     <p className="text-sm text-gray-600 capitalize">{appointment.type}</p>
                     <p className="text-xs text-gray-500">
-                      {new Date(appointment.appointmentDate).toLocaleDateString()} at {appointment.startTime}
+                      {new Date(appointment.appointmentId).toLocaleDateString()} at {appointment.startTime}
                     </p>
                   </div>
                   <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${getStatusColor(appointment.status)}`}>

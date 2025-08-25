@@ -1,6 +1,5 @@
 // src/services/api.service.ts
 import {
-  ApiResponse,
   LoginRequest,
   LoginResponse,
   RefreshTokenRequest,
@@ -26,6 +25,7 @@ export interface PaginatedResponse<T> {
 }
 
 class ApiService {
+  [x: string]: any;
   private getAuthHeaders(): HeadersInit {
     const token = localStorage.getItem('accessToken');
     return {
@@ -129,7 +129,7 @@ class ApiService {
   }
 
   // Generic API call method
-  async apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
+  async apiCall<T>(endpoint: string, p0: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
     const url = `${API_BASE_URL}${endpoint}`;
     const response = await fetch(url, {
       ...options,
@@ -144,3 +144,11 @@ class ApiService {
 }
 
 export const apiService = new ApiService();
+
+function getToken() {
+  throw new Error('Function not implemented.');
+}
+function clearToken() {
+  throw new Error('Function not implemented.');
+}
+

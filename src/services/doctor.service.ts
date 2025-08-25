@@ -1,6 +1,8 @@
 // src/services/doctor.service.ts
 import axios, { AxiosResponse } from 'axios';
-import { BaseResponse } from '../types/api.types';
+import ApiResponse, { BaseResponse } from '../types/api.types';
+import { DoctorAvailability } from '../types/doctor.types';
+import { apiService } from './api.service';
 // import { BaseResponse } from './auth.service';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
@@ -55,6 +57,9 @@ export interface DoctorDto {
 }
 
 class DoctorService {
+  getDoctorStats(doctorId: string) {
+    throw new Error('Method not implemented.');
+  }
   private readonly baseURL: string;
 
   constructor() {
