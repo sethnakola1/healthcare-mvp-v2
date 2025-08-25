@@ -8,6 +8,8 @@ export interface Patient {
   mrn: string;
   firstName: string;
   lastName: string;
+  email: string;
+  phone: string;
   dateOfBirth: string;
   gender: Gender;
   email?: string;
@@ -57,6 +59,8 @@ export interface CreatePatientData {
   hospitalId: string;
   firstName: string;
   lastName: string;
+  email: string;
+  phone: string;
   dateOfBirth: string;
   gender?: Gender;
   email?: string;

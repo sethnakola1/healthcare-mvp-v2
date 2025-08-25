@@ -23,23 +23,92 @@ export interface PrescriptionDto {
   createdAt: string;
   createdBy?: string;
   updatedAt: string;
-  updatedBy?: string;
+
+  // Populated fields
+  patient?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    dateOfBirth: string;
+  };
+  doctor?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    specialization: string;
+    licenseNumber: string;
+  };
 }
+
+export interface PrescriptionMedication {
+  id: string;
+  medicationName: string;
+  genericName?: string;
+  strength: string;
+  dosageForm: DosageForm;
+  quantity: number;
+  dosage: string;
+  frequency: string;
+  duration: string;
+  instructions: string;
+  cost: number;
+  isGenericAllowed: boolean;
+  drugInteractions?: string[];
+  sideEffects?: string[];
+}
+
+export type DosageForm =
+  | 'tablet'
+  | 'capsule'
+  | 'syrup'
+  | 'injection'
+  | 'cream'
+  | 'ointment'
+  | 'drops'
+  | 'inhaler'
+  | 'patch';
+
+export type PrescriptionStatus =
+  | 'active'
+  | 'completed'
+  | 'cancelled'
+  | 'expired'
+  | 'partially-filled';
 
 export interface CreatePrescriptionRequest {
   appointmentId: string;
   patientId: string;
   doctorId: string;
-  medications: MedicationDto[];
-  instructions?: string;
-  issueDate: string;
-  expiryDate: string;
+  hospitalId: string;
+  appointmentId?: string;
+  medicalRecordId?: string;
+  medications: Omit<PrescriptionMedication, 'id'>[];
+  instructions: string;
+  validUntil: string;
+  refillsAllowed: number;
 }
 
-export interface MedicationDto {
-  name: string;
-  dosage: string;
-  frequency: string;
-  durationDays: number;
-  route: string;
+export interface UpdatePrescriptionRequest {
+  id: string;
+  status?: PrescriptionStatus;
+  refillsUsed?: number;
+  pharmacy?: {
+    name: string;
+    address: string;
+    phone: string;
+  };
+}
+
+export interface PrescriptionSearchParams {
+  patientId?: string;
+  doctorId?: string;
+  hospitalId?: string;
+  status?: PrescriptionStatus;
+  dateFrom?: string;
+  dateTo?: string;
+  medicationName?: string;
+  page?: number;
+  limit?: number;
+  sortBy?: 'date' | 'createdAt' | 'validUntil';
+  sortOrder?: 'asc' | 'desc';
 }

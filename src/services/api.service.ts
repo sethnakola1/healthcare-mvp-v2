@@ -7,7 +7,23 @@ import {
   User
 } from '../types/auth.types';
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080/api';
+export interface ApiResponse<T = any> {
+  success: boolean;
+  data?: T;
+  message?: string;
+  error?: string;
+  errors?: Record<string, string[]>;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
 
 class ApiService {
   private getAuthHeaders(): HeadersInit {
@@ -21,6 +37,27 @@ class ApiService {
   private async handleResponse<T>(response: Response): Promise<ApiResponse<T>> {
     let data: ApiResponse<T>;
 
+  // Get authentication token
+  getToken(): string | null {
+    if (!this.token) {
+      this.token = localStorage.getItem('auth_token');
+    }
+    return this.token;
+  }
+
+  // Clear authentication token
+  clearToken() {
+    this.token = null;
+    localStorage.removeItem('auth_token');
+  }
+
+  // Generic API call method
+  async apiCall<T = any>(
+    endpoint: string,
+    method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET',
+    data?: any,
+    options?: RequestInit
+  ): Promise<ApiResponse<T>> {
     try {
       data = await response.json();
     } catch (error) {
@@ -66,6 +103,11 @@ class ApiService {
     });
 
     return this.handleResponse<User>(response);
+  }
+
+  // PUT request
+  async put<T = any>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+    return this.apiCall<T>(endpoint, 'PUT', data);
   }
 
   async logout(): Promise<ApiResponse<string>> {

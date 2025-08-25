@@ -1,143 +1,220 @@
-// Type guards for runtime type checking
-// import  User  from '../contexts/AuthContext';
+// src/utils/typeGuards.ts
 
-import { User } from "../types/api.types";
+import { Patient } from '../types/patient.types';
+import { Doctor } from '../types/doctor.types';
+import { Hospital } from '../types/hospital.types';
+import { Appointment, AppointmentStatus, AppointmentType } from '../types/appointment.types';
+import { Bill, BillStatus } from '../types/billing.types';
+import { Prescription, PrescriptionStatus } from '../types/prescription.types';
 
-/**
- * Check if a value is a string
- */
-export function isString(value: unknown): value is string {
-  return typeof value === 'string';
-}
+// Patient type guards
+export const isPatient = (obj: any): obj is Patient => {
+  return obj &&
+    typeof obj.id === 'string' &&
+    typeof obj.firstName === 'string' &&
+    typeof obj.lastName === 'string' &&
+    typeof obj.email === 'string' &&
+    typeof obj.phone === 'string' &&
+    typeof obj.dateOfBirth === 'string' &&
+    ['male', 'female', 'other'].includes(obj.gender) &&
+    obj.address &&
+    typeof obj.address.street === 'string' &&
+    obj.emergencyContact &&
+    typeof obj.emergencyContact.name === 'string' &&
+    Array.isArray(obj.allergies) &&
+    Array.isArray(obj.medicalHistory);
+};
 
-/**
- * Check if a value is a number
- */
-export function isNumber(value: unknown): value is number {
-  return typeof value === 'number' && !isNaN(value);
-}
+// Doctor type guards
+export const isDoctor = (obj: any): obj is Doctor => {
+  return obj &&
+    typeof obj.id === 'string' &&
+    typeof obj.firstName === 'string' &&
+    typeof obj.lastName === 'string' &&
+    typeof obj.email === 'string' &&
+    typeof obj.specialization === 'string' &&
+    typeof obj.licenseNumber === 'string' &&
+    typeof obj.experience === 'number' &&
+    typeof obj.hospitalId === 'string' &&
+    typeof obj.consultationFee === 'number' &&
+    Array.isArray(obj.qualifications) &&
+    Array.isArray(obj.availableSlots);
+};
 
-/**
- * Check if a value is a boolean
- */
-export function isBoolean(value: unknown): value is boolean {
-  return typeof value === 'boolean';
-}
+// Hospital type guards
+export const isHospital = (obj: any): obj is Hospital => {
+  return obj &&
+    typeof obj.id === 'string' &&
+    typeof obj.name === 'string' &&
+    obj.address &&
+    typeof obj.address.street === 'string' &&
+    typeof obj.phone === 'string' &&
+    typeof obj.email === 'string' &&
+    Array.isArray(obj.departments) &&
+    Array.isArray(obj.facilities) &&
+    obj.operatingHours &&
+    typeof obj.totalBeds === 'number';
+};
 
-/**
- * Check if a value is an object (and not null or array)
- */
-export function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
+// Appointment type guards
+export const isAppointment = (obj: any): obj is Appointment => {
+  return obj &&
+    typeof obj.id === 'string' &&
+    typeof obj.patientId === 'string' &&
+    typeof obj.doctorId === 'string' &&
+    typeof obj.hospitalId === 'string' &&
+    typeof obj.appointmentDate === 'string' &&
+    typeof obj.startTime === 'string' &&
+    typeof obj.endTime === 'string' &&
+    isAppointmentStatus(obj.status) &&
+    isAppointmentType(obj.type) &&
+    typeof obj.reason === 'string' &&
+    typeof obj.consultationFee === 'number';
+};
 
-/**
- * Check if a value is an array
- */
-export function isArray(value: unknown): value is unknown[] {
-  return Array.isArray(value);
-}
+export const isAppointmentStatus = (status: any): status is AppointmentStatus => {
+  return ['scheduled', 'confirmed', 'in-progress', 'completed', 'cancelled', 'no-show'].includes(status);
+};
 
-/**
- * Check if a value is a valid User object
- */
-export function isUser(value: unknown): value is User {
-  if (!isObject(value)) {
-    return false;
-  }
+export const isAppointmentType = (type: any): type is AppointmentType => {
+  return ['consultation', 'follow-up', 'emergency', 'routine-checkup', 'diagnostic', 'procedure'].includes(type);
+};
 
-  const requiredFields = ['userId', 'email', 'firstName', 'lastName', 'role'];
-  return requiredFields.every(field => field in value);
-}
+// Bill type guards
+export const isBill = (obj: any): obj is Bill => {
+  return obj &&
+    typeof obj.id === 'string' &&
+    typeof obj.billNumber === 'string' &&
+    typeof obj.patientId === 'string' &&
+    typeof obj.hospitalId === 'string' &&
+    typeof obj.date === 'string' &&
+    Array.isArray(obj.items) &&
+    typeof obj.totalAmount === 'number' &&
+    isBillStatus(obj.status);
+};
 
-/**
- * Check if a string is a valid email format
- */
-export function isValidEmail(email: string): boolean {
+export const isBillStatus = (status: any): status is BillStatus => {
+  return ['draft', 'sent', 'paid', 'partially-paid', 'overdue', 'cancelled'].includes(status);
+};
+
+// Prescription type guards
+export const isPrescription = (obj: any): obj is Prescription => {
+  return obj &&
+    typeof obj.id === 'string' &&
+    typeof obj.patientId === 'string' &&
+    typeof obj.doctorId === 'string' &&
+    typeof obj.hospitalId === 'string' &&
+    typeof obj.prescriptionNumber === 'string' &&
+    typeof obj.date === 'string' &&
+    Array.isArray(obj.medications) &&
+    isPrescriptionStatus(obj.status);
+};
+
+export const isPrescriptionStatus = (status: any): status is PrescriptionStatus => {
+  return ['active', 'completed', 'cancelled', 'expired', 'partially-filled'].includes(status);
+};
+
+// Validation helpers
+export const isValidEmail = (email: string): boolean => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
-}
+};
 
-/**
- * Check if a string is a valid UUID
- */
-export function isValidUUID(uuid: string): boolean {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  return uuidRegex.test(uuid);
-}
+export const isValidPhone = (phone: string): boolean => {
+  const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
+  return phoneRegex.test(phone.replace(/[\s\-\(\)]/g, ''));
+};
 
-/**
- * Check if a value is a valid date
- */
-export function isValidDate(value: unknown): value is Date {
-  return value instanceof Date && !isNaN(value.getTime());
-}
+export const isValidDate = (date: string): boolean => {
+  const parsedDate = new Date(date);
+  return !isNaN(parsedDate.getTime());
+};
 
-/**
- * Check if a value is null or undefined
- */
-export function isNullOrUndefined(value: unknown): value is null | undefined {
-  return value === null || value === undefined;
-}
+export const isValidTime = (time: string): boolean => {
+  const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
+  return timeRegex.test(time);
+};
 
-/**
- * Check if a value is defined (not null or undefined)
- */
-export function isDefined<T>(value: T | null | undefined): value is T {
-  return value !== null && value !== undefined;
-}
+// Array type guards
+export const isPatientArray = (arr: any[]): arr is Patient[] => {
+  return Array.isArray(arr) && arr.every(isPatient);
+};
 
-/**
- * Check if a string is not empty
- */
-export function isNonEmptyString(value: unknown): value is string {
-  return isString(value) && value.trim().length > 0;
-}
+export const isDoctorArray = (arr: any[]): arr is Doctor[] => {
+  return Array.isArray(arr) && arr.every(isDoctor);
+};
 
-/**
- * Check if an array is not empty
- */
-export function isNonEmptyArray<T>(value: T[]): value is [T, ...T[]] {
-  return isArray(value) && value.length > 0;
-}
+export const isHospitalArray = (arr: any[]): arr is Hospital[] => {
+  return Array.isArray(arr) && arr.every(isHospital);
+};
 
-/**
- * Type guard for API response
- */
-export interface ApiResponse<T = any> {
-  success: boolean;
-  message: string;
-  data?: T;
-  error?: string;
-  errorCode?: string;
-  timestamp: string;
-}
+export const isAppointmentArray = (arr: any[]): arr is Appointment[] => {
+  return Array.isArray(arr) && arr.every(isAppointment);
+};
 
-export function isApiResponse<T>(value: unknown): value is ApiResponse<T> {
-  if (!isObject(value)) {
-    return false;
+// Utility functions for data validation
+export const validatePatientData = (data: any): { isValid: boolean; errors: string[] } => {
+  const errors: string[] = [];
+
+  if (!data.firstName || typeof data.firstName !== 'string') {
+    errors.push('First name is required');
   }
 
-  return (
-    'success' in value &&
-    isBoolean(value.success) &&
-    'message' in value &&
-    isString(value.message) &&
-    'timestamp' in value &&
-    isString(value.timestamp)
-  );
-}
+  if (!data.lastName || typeof data.lastName !== 'string') {
+    errors.push('Last name is required');
+  }
 
-/**
- * Check if API response is successful
- */
-export function isSuccessfulApiResponse<T>(value: unknown): value is ApiResponse<T> & { success: true; data: T } {
-  return isApiResponse(value) && value.success === true && 'data' in value;
-}
+  if (!data.email || !isValidEmail(data.email)) {
+    errors.push('Valid email is required');
+  }
 
-/**
- * Check if API response is an error
- */
-export function isErrorApiResponse(value: unknown): value is ApiResponse & { success: false; error: string } {
-  return isApiResponse(value) && value.success === false && 'error' in value;
-}
+  if (!data.phone || !isValidPhone(data.phone)) {
+    errors.push('Valid phone number is required');
+  }
+
+  if (!data.dateOfBirth || !isValidDate(data.dateOfBirth)) {
+    errors.push('Valid date of birth is required');
+  }
+
+  if (!data.gender || !['male', 'female', 'other'].includes(data.gender)) {
+    errors.push('Valid gender is required');
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+};
+
+export const validateAppointmentData = (data: any): { isValid: boolean; errors: string[] } => {
+  const errors: string[] = [];
+
+  if (!data.patientId || typeof data.patientId !== 'string') {
+    errors.push('Patient ID is required');
+  }
+
+  if (!data.doctorId || typeof data.doctorId !== 'string') {
+    errors.push('Doctor ID is required');
+  }
+
+  if (!data.appointmentDate || !isValidDate(data.appointmentDate)) {
+    errors.push('Valid appointment date is required');
+  }
+
+  if (!data.startTime || !isValidTime(data.startTime)) {
+    errors.push('Valid start time is required');
+  }
+
+  if (!data.endTime || !isValidTime(data.endTime)) {
+    errors.push('Valid end time is required');
+  }
+
+  if (!data.reason || typeof data.reason !== 'string') {
+    errors.push('Appointment reason is required');
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+};

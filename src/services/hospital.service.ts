@@ -183,7 +183,18 @@ class HospitalService {
       throw error.response?.data || error;
     }
   }
+  // Update hospital bed availability
+  async updateBedAvailability(
+    hospitalId: string,
+    availableBeds: number
+  ): Promise<ApiResponse<{ availableBeds: number; occupancyRate: number }>> {
+    return apiService.put<any>(`${this.endpoint}/${hospitalId}/beds`, { availableBeds });
+  }
 
+  // Get hospital types
+  async getHospitalTypes(): Promise<ApiResponse<string[]>> {
+    return apiService.get<string[]>(`${this.endpoint}/types`);
+  }
   async getHospitalsByState(state: string): Promise<BaseResponse<HospitalDto[]>> {
     try {
       const params = new URLSearchParams({ state });

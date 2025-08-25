@@ -118,6 +118,15 @@ class DoctorService {
     }
   }
 
+  // Get doctor availability
+  async getDoctorAvailability(
+    doctorId: string,
+    date: string
+  ): Promise<ApiResponse<DoctorAvailability>> {
+    return apiService.get<DoctorAvailability>(`${this.endpoint}/${doctorId}/availability`, { date });
+  }
+
+
   async searchDoctors(searchTerm: string): Promise<BaseResponse<DoctorDto[]>> {
     try {
       const params = new URLSearchParams({ searchTerm });
