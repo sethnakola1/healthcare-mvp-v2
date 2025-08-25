@@ -1,4 +1,3 @@
-// src/components/auth/RegisterPage.tsx
 import React, { useState } from 'react';
 import { Navigate, Link, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
