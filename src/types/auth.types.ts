@@ -1,19 +1,12 @@
-export interface AuthState {
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  user: UserProfile | null;
-  error: string | null;
-  lastActivity: number;
-}
-
-export interface UserProfile {
+// src/types/auth.types.ts
+export interface User {
   userId: string;
   email: string;
   firstName: string;
   lastName: string;
   fullName: string;
   username: string;
-  role: BusinessRole; // Fixed: Use BusinessRole enum instead of string
+  role: UserRole; // Fixed: Use BusinessRole enum instead of string
   roleDisplayName: string;
   isActive: boolean;
   emailVerified: boolean;
@@ -22,56 +15,11 @@ export interface UserProfile {
   partnerCode?: string;
   lastLogin?: string;
   createdAt: string;
-}
-
-export enum BusinessRole {
-  SUPER_ADMIN = 'SUPER_ADMIN',
-  TECH_ADVISOR = 'TECH_ADVISOR',
-  HOSPITAL_ADMIN = 'HOSPITAL_ADMIN',
-  DOCTOR = 'DOCTOR',
-  NURSE = 'NURSE',
-  RECEPTIONIST = 'RECEPTIONIST',
-  LAB_STAFF = 'LAB_STAFF',
-  PHARMACY_STAFF = 'PHARMACY_STAFF',
-  BILLING_STAFF = 'BILLING_STAFF',
-  PATIENT = 'PATIENT'
-}
-
-export interface LoginCredentials {
-  email: string;
-  password: string;
-}
-
-
-
-// src/types/auth.types.ts
-export interface User {
-  id: string;
-  userId: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  role: UserRole;
-  createdAt: string;
-  updatedAt: string;
-  fullName: string;
-  roleDisplayName : string;
-  username: string;
-  phoneNumber: string;
-  territory: string;
-  isActive: boolean;
-  emailVerified: boolean;
-  
-
-  
-}
-
-export enum UserRole {
-  ADMIN = 'admin',
-  DOCTOR = 'doctor',
-  NURSE = 'nurse',
-  PATIENT = 'patient',
-  STAFF = 'staff'
+  // Business-specific fields
+  commissionPercentage?: number;
+  targetHospitalsMonthly?: number;
+  totalHospitalsBrought?: number;
+  totalCommissionEarned?: number;
 }
 
 export interface LoginRequest {
@@ -80,35 +28,58 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  success: boolean;
-  user?: User;
-  error?: string;
-  message?: string;
-}
-
-export interface AuthResponse {
-  success: boolean;
-  user?: User;
-  error?: string;
-}
-
-export interface PasswordResetRequest {
+  accessToken: string;
+  refreshToken: string;
+  tokenType: string;
+  expiresIn: number;
+  userId: string;
   email: string;
+  firstName: string;
+  lastName: string;
+  role: UserRole;
+  loginTime: string;
 }
 
-export interface PasswordResetResponse {
+export interface RefreshTokenRequest {
+  refreshToken: string;
+}
+
+export interface ApiResponse<T> {
   success: boolean;
   message: string;
+  data?: T;
   error?: string;
+  errorCode?: string;
+  timestamp: string;
+  path?: string;
 }
 
-export interface ChangePasswordRequest {
-  currentPassword: string;
-  newPassword: string;
+export interface AuthContextType {
+  token: any;
+  user: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  error: string | null;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => void;
+  refreshToken: () => Promise<void>;
+  clearError: () => void;
 }
 
-export interface ApiError {
-  message: string;
-  status: number;
-  code?: string;
+export type UserRole =
+  | 'SUPER_ADMIN'
+  | 'TECH_ADVISOR'
+  | 'HOSPITAL_ADMIN'
+  | 'DOCTOR'
+  | 'NURSE'
+  | 'RECEPTIONIST'
+  | 'PATIENT';
+
+export interface AuthState {
+  user: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  error: string | null;
+  token: string | null;
+  refreshToken: string | null;
 }

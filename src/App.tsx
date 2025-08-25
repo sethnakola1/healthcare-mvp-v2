@@ -1,14 +1,11 @@
-// src/App.tsx
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './contexts/AuthContext';
 import LoginForm from './components/auth/LoginForm';
 import Dashboard from './components/dashboard/Dashboard';
-import ProtectedRoute from './components/auth/ProtectedRoute';
 import './App.css';
+import { ProtectedRoute } from './components/auth/ProtectedRoute';
 function App() {
 return (
-<AuthProvider>
 <Router>
 <div className="App">
 <Routes>
@@ -32,7 +29,6 @@ return (
       </Routes>
     </div>
   </Router>
-</AuthProvider>
 );
 }
 export default App;

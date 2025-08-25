@@ -1,14 +1,13 @@
 // src/types/api.types.ts
 
-export interface ApiResponse<T> {
+
+export interface ApiResponse<T = any> {
   success: boolean;
   message: string;
-  data: T;
+  data?: T;
+  error?: string;
   errorCode?: string;
   timestamp: string;
-  path?: string;
-  status?: number;
-  metadata?: Record<string, any>;
 }
 
 export interface PaginatedResponse<T> {
@@ -22,6 +21,16 @@ export interface PaginatedResponse<T> {
   sortBy?: string;
   sortDirection?: string;
 }
+
+// export interface PaginatedResponse<T> {
+//   content: T[];
+//   page: number;
+//   size: number;
+//   totalElements: number;
+//   totalPages: number;
+//   hasNext: boolean;
+//   hasPrevious: boolean;
+// }
 
 // export interface BaseResponse<T> extends ApiResponse<T> {
 //   error?: string;
@@ -108,5 +117,25 @@ export enum UserRole {
   Laboratory = 'LABORATORY',
   Radiologist = 'RADIOLOGIST',
 }
+
+
+// export interface ApiResponse<T> {
+//   success: boolean;
+//   message: string;
+//   data: T;
+//   errorCode?: string;
+//   timestamp: string;
+//   path?: string;
+//   status?: number;
+//   metadata?: Record<string, any>;
+// }
+
+// export interface ApiResponse<T> {
+//   success: boolean;
+//   message: string;
+//   data: T;
+//   errorCode?: string;
+//   timestamp: string;
+// }
 
 export default ApiResponse;

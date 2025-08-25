@@ -1,5 +1,7 @@
 // Type guards for runtime type checking
-import  User  from '../contexts/AuthContext';
+// import  User  from '../contexts/AuthContext';
+
+import { User } from "../types/api.types";
 
 /**
  * Check if a value is a string

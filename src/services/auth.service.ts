@@ -11,16 +11,17 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-accessToken: string;
-refreshToken: string;
-tokenType: string;
-expiresIn: number;
-userId: string;
-email: string;
-firstName: string;
-lastName: string;
-role: string;
-loginTime: string;
+  data: any;
+  accessToken: string;
+  refreshToken: string;
+  tokenType: string;
+  expiresIn: number;
+  userId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  loginTime: string;
 }
 
 export interface RefreshTokenRequest {
@@ -28,13 +29,13 @@ export interface RefreshTokenRequest {
 }
 
 export interface ApiResponse<T> {
-success: boolean;
-message: string;
-data?: T;
-error?: string;
-errorCode?: string;
-timestamp: string;
-path?: string;
+  success: boolean;
+  message: string;
+  data?: T;
+  error?: string;
+  errorCode?: string;
+  timestamp: string;
+  path?: string;
 }
 
 export interface User {
@@ -67,14 +68,6 @@ export interface RegisterRequest {
 }
 
 class AuthService {
-
-// private baseURL: string;
-
-// constructor() {
-// this.baseURL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
-// }
-
-
   private api: AxiosInstance;
   private refreshPromise: Promise<any> | null = null;
 
@@ -90,35 +83,11 @@ class AuthService {
     this.setupInterceptors();
   }
 
-
-private async makeRequest<T>(
-newEndpoint: string,
-options: RequestInit = {}
-): Promise<ApiResponse<T>> {
-const url = this.api.defaults.baseURL + newEndpoint;
-const config: RequestInit = {
-  headers: {
-    'Content-Type': 'application/json',
-    ...options.headers,
-  },
-  ...options,
-};
-
-const response = await fetch(url, config);
-const data = await response.json();
-
-if (!response.ok) {
-  throw new Error(data.message || data.error || `HTTP ${response.status}`);
-}
-
-return data;
-}
-
   private setupInterceptors(): void {
     // Request interceptor to add auth token
     this.api.interceptors.request.use(
       (config) => {
-        const token = this.getStoredToken();
+        const token = this.getAccessToken();
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
         }
@@ -141,7 +110,7 @@ return data;
           originalRequest._retry = true;
 
           try {
-            const refreshToken = this.getStoredRefreshToken();
+            const refreshToken = this.getRefreshToken();
             if (refreshToken) {
               // Prevent multiple refresh requests
               if (!this.refreshPromise) {
@@ -152,14 +121,14 @@ return data;
               this.refreshPromise = null;
 
               if (response.success && response.data?.accessToken) {
-                this.setStoredToken(response.data.accessToken);
+                this.setTokens(response.data.accessToken, response.data.refreshToken);
                 originalRequest.headers.Authorization = `Bearer ${response.data.accessToken}`;
                 return this.api(originalRequest);
               }
             }
           } catch (refreshError) {
             console.error('Token refresh failed:', refreshError);
-            this.clearTokens();
+            this.clearAuth();
             window.location.href = '/login';
           }
         }
@@ -170,30 +139,33 @@ return data;
   }
 
   // Secure token storage methods
-  private getStoredToken(): string | null {
+  public setTokens(accessToken: string, refreshToken: string): void {
+    localStorage.setItem('accessToken', accessToken);
+    localStorage.setItem('refreshToken', refreshToken);
+  }
+
+  public getAccessToken(): string | null {
     return localStorage.getItem('accessToken');
   }
 
-  private setStoredToken(token: string): void {
-    localStorage.setItem('accessToken', token);
-  }
-
-  private getStoredRefreshToken(): string | null {
+  public getRefreshToken(): string | null {
     return localStorage.getItem('refreshToken');
   }
 
-  private clearTokens(): void {
+  public setUser(user: User): void {
+    localStorage.setItem('user', JSON.stringify(user));
+  }
+
+  public getUser(): User | null {
+    const userStr = localStorage.getItem('user');
+    return userStr ? JSON.parse(userStr) : null;
+  }
+
+  public clearAuth(): void {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
   }
-
-// async login(credentials: LoginRequest): Promise<ApiResponse<LoginResponse>> {
-// return this.makeRequest<LoginResponse>('/api/auth/login', {
-// method: 'POST',
-// body: JSON.stringify(credentials),
-// });
-// }
 
   // Auth methods
   public async login(credentials: LoginRequest): Promise<ApiResponse<LoginResponse>> {
@@ -203,38 +175,19 @@ return data;
         credentials
       );
 
-      // Enhanced error handling
       if (response.data.success && response.data.data) {
-        return response.data;
-      } else {
-        throw new Error(response.data.message || 'Login failed');
+        const { accessToken, refreshToken } = response.data.data;
+        this.setTokens(accessToken, refreshToken);
+        // The user object will be fetched and set in the authSlice
       }
+
+      return response.data;
     } catch (error: any) {
       console.error('Login service error:', error);
-
-      // Handle different error scenarios
-      if (error.response?.status === 401) {
-        throw new Error('Invalid email or password');
-      } else if (error.response?.status === 423) {
-        throw new Error('Account is temporarily locked. Please try again later.');
-      } else if (error.response?.status >= 500) {
-        throw new Error('Server error. Please try again later.');
-      } else if (error.response?.data?.message) {
-        throw new Error(error.response.data.message);
-      } else if (error.message) {
-        throw new Error(error.message);
-      } else {
-        throw new Error('Network error. Please check your connection.');
-      }
+      this.handleApiError(error);
     }
   }
 
-// async refreshToken(refreshToken: string): Promise<ApiResponse<LoginResponse>> {
-// return this.makeRequest<LoginResponse>('/api/auth/refresh', {
-// method: 'POST',
-// body: JSON.stringify({ refreshToken }),
-// });
-// }
   public async refreshToken(request: RefreshTokenRequest): Promise<ApiResponse<LoginResponse>> {
     try {
       const response: AxiosResponse<ApiResponse<LoginResponse>> = await this.api.post(
@@ -244,7 +197,7 @@ return data;
       return response.data;
     } catch (error: any) {
       console.error('Token refresh error:', error);
-      throw new Error(error.response?.data?.message || 'Token refresh failed');
+      this.handleApiError(error);
     }
   }
 
@@ -257,37 +210,22 @@ return data;
       return response.data;
     } catch (error: any) {
       console.error('Registration error:', error);
-      throw new Error(error.response?.data?.message || 'Registration failed');
+      this.handleApiError(error);
     }
   }
-
-// async getCurrentUser(token: string): Promise<ApiResponse<any>> {
-// return this.makeRequest<any>('/api/auth/me', {
-// method: 'GET',
-// headers: {
-// Authorization: Bearer ${token},
-// },
-// });
-// }
 
   public async getCurrentUser(): Promise<ApiResponse<User>> {
     try {
-      const response: AxiosResponse<ApiResponse<User>> = await this.api.get('/auth/me');
+      const response: AxiosResponse<ApiResponse<User>> = await this.api.get('/users/me');
+      if(response.data.success && response.data.data){
+        this.setUser(response.data.data);
+      }
       return response.data;
     } catch (error: any) {
       console.error('Get current user error:', error);
-      throw new Error(error.response?.data?.message || 'Failed to get user information');
+      this.handleApiError(error);
     }
   }
-
-  // async validateToken(token: string): Promise<ApiResponse<boolean>> {
-// return this.makeRequest<boolean>('/api/auth/validate', {
-// method: 'GET',
-// headers: {
-// Authorization: Bearer ${token},
-// },
-// });
-// }
 
   public async validateToken(): Promise<ApiResponse<boolean>> {
     try {
@@ -295,20 +233,9 @@ return data;
       return response.data;
     } catch (error: any) {
       console.error('Token validation error:', error);
-      throw new Error('Token validation failed');
+      this.handleApiError(error);
     }
   }
-
-
-
-// async logout(token: string): Promise<ApiResponse<string>> {
-// return this.makeRequest<string>('/api/auth/logout', {
-// method: 'POST',
-// headers: {
-// Authorization: Bearer ${token},
-// },
-// });
-// }
 
   public async logout(): Promise<void> {
     try {
@@ -317,7 +244,7 @@ return data;
       console.error('Logout error:', error);
       // Continue with local logout even if server logout fails
     } finally {
-      this.clearTokens();
+      this.clearAuth();
     }
   }
 
@@ -330,23 +257,22 @@ return data;
       return response.data;
     } catch (error: any) {
       console.error('Change password error:', error);
-      throw new Error(error.response?.data?.message || 'Failed to change password');
+      this.handleApiError(error);
     }
   }
 
   // Utility methods
   public isAuthenticated(): boolean {
-    return Boolean(this.getStoredToken());
+    return Boolean(this.getAccessToken());
   }
 
   public getAuthHeader(): string | null {
-    const token = this.getStoredToken();
+    const token = this.getAccessToken();
     return token ? `Bearer ${token}` : null;
   }
 
-  // Security utilities
   public isTokenExpired(): boolean {
-    const token = this.getStoredToken();
+    const token = this.getAccessToken();
     if (!token) return true;
 
     try {
@@ -359,41 +285,34 @@ return data;
     }
   }
 
-
-// Token storage helpers
-static setTokens(accessToken: string, refreshToken: string): void {
-localStorage.setItem('accessToken', accessToken);
-localStorage.setItem('refreshToken', refreshToken);
-}
-
-static getAccessToken(): string | null {
-return localStorage.getItem('accessToken');
-}
-
-static getRefreshToken(): string | null {
-return localStorage.getItem('refreshToken');
-}
-
-static clearTokens(): void {
-localStorage.removeItem('accessToken');
-localStorage.removeItem('refreshToken');
-localStorage.removeItem('tokenType');
-localStorage.removeItem('expiresIn');
-localStorage.removeItem('user');
-}
-
-static setUser(user: any): void {
-localStorage.setItem('user', JSON.stringify(user));
-}
-
-static getUser(): any | null {
-const userStr = localStorage.getItem('user');
-return userStr ? JSON.parse(userStr) : null;
-}
-
-static clearAuth(): void {
-this.clearTokens();
-}
+  private handleApiError(error: any): never {
+    if (error.response) {
+      // The request was made and the server responded with a status code
+      // that falls out of the range of 2xx
+      const { status, data } = error.response;
+      if (status === 401) {
+        this.clearAuth();
+        window.location.href = '/login';
+        throw new Error('Unauthorized. Please log in again.');
+      }
+      if (status === 403) {
+        throw new Error('You do not have permission to perform this action.');
+      }
+      if (status === 423) {
+        throw new Error('Account is temporarily locked. Please try again later.');
+      }
+      if (status >= 500) {
+        throw new Error('Server error. Please try again later.');
+      }
+      throw new Error(data.message || 'An unexpected error occurred.');
+    } else if (error.request) {
+      // The request was made but no response was received
+      throw new Error('Network error. Please check your connection.');
+    } else {
+      // Something happened in setting up the request that triggered an Error
+      throw new Error(error.message);
+    }
+  }
 }
 
 export const authService = new AuthService();

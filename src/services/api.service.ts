@@ -1,96 +1,104 @@
 // src/services/api.service.ts
-export interface ApiResponse<T> {
-  success: boolean;
-  message: string;
-  data: T;
-  errorCode?: string;
-  timestamp: string;
-}
+import {
+  ApiResponse,
+  LoginRequest,
+  LoginResponse,
+  RefreshTokenRequest,
+  User
+} from '../types/auth.types';
 
-export interface PaginatedResponse<T> {
-  content: T[];
-  page: number;
-  size: number;
-  totalElements: number;
-  totalPages: number;
-  hasNext: boolean;
-  hasPrevious: boolean;
-}
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080/api';
 
 class ApiService {
-  private baseURL: string;
-
-  constructor() {
-    this.baseURL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
-  }
-
   private getAuthHeaders(): HeadersInit {
-    const token = localStorage.getItem('authToken');
+    const token = localStorage.getItem('accessToken');
     return {
       'Content-Type': 'application/json',
-      ...(token && { Authorization: `Bearer ${token}` })
+      ...(token && { 'Authorization': `Bearer ${token}` })
     };
   }
 
-  private async handleResponse<T>(response: Response): Promise<T> {
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ message: 'Request failed' }));
-      throw new Error(errorData.message || `HTTP ${response.status}`);
+  private async handleResponse<T>(response: Response): Promise<ApiResponse<T>> {
+    let data: ApiResponse<T>;
+
+    try {
+      data = await response.json();
+    } catch (error) {
+      throw new Error('Invalid JSON response from server');
     }
-    return response.json();
+
+    if (!response.ok) {
+      // Backend returns structured error responses
+      throw new Error(data.error || data.message || 'Request failed');
+    }
+
+    return data;
   }
 
-  async get<T>(endpoint: string): Promise<T> {
-    const response = await fetch(`${this.baseURL}${endpoint}`, {
+  async login(loginRequest: LoginRequest): Promise<ApiResponse<LoginResponse>> {
+    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(loginRequest),
+    });
+
+    return this.handleResponse<LoginResponse>(response);
+  }
+
+  async refreshToken(refreshRequest: RefreshTokenRequest): Promise<ApiResponse<LoginResponse>> {
+    const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(refreshRequest),
+    });
+
+    return this.handleResponse<LoginResponse>(response);
+  }
+
+  async getCurrentUser(): Promise<ApiResponse<User>> {
+    const response = await fetch(`${API_BASE_URL}/auth/me`, {
       method: 'GET',
       headers: this.getAuthHeaders(),
     });
-    return this.handleResponse<T>(response);
+
+    return this.handleResponse<User>(response);
   }
 
-  async post<T>(endpoint: string, data?: any): Promise<T> {
-    const response = await fetch(`${this.baseURL}${endpoint}`, {
+  async logout(): Promise<ApiResponse<string>> {
+    const response = await fetch(`${API_BASE_URL}/auth/logout`, {
       method: 'POST',
       headers: this.getAuthHeaders(),
-      body: data ? JSON.stringify(data) : undefined,
     });
-    return this.handleResponse<T>(response);
+
+    return this.handleResponse<string>(response);
   }
 
-  async put<T>(endpoint: string, data?: any): Promise<T> {
-    const response = await fetch(`${this.baseURL}${endpoint}`, {
-      method: 'PUT',
-      headers: this.getAuthHeaders(),
-      body: data ? JSON.stringify(data) : undefined,
-    });
-    return this.handleResponse<T>(response);
-  }
-
-  async delete<T>(endpoint: string): Promise<T> {
-    const response = await fetch(`${this.baseURL}${endpoint}`, {
-      method: 'DELETE',
+  async validateToken(): Promise<ApiResponse<boolean>> {
+    const response = await fetch(`${API_BASE_URL}/auth/validate`, {
+      method: 'GET',
       headers: this.getAuthHeaders(),
     });
-    return this.handleResponse<T>(response);
+
+    return this.handleResponse<boolean>(response);
   }
 
-  // Auth specific methods
-  async getCurrentUser(token: string) {
-    const response = await fetch(`${this.baseURL}/auth/me`, {
+  // Generic API call method
+  async apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
+    const url = `${API_BASE_URL}${endpoint}`;
+    const response = await fetch(url, {
+      ...options,
       headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
-      }
+        ...this.getAuthHeaders(),
+        ...options.headers,
+      },
     });
-    return this.handleResponse(response);
+
+    return this.handleResponse<T>(response);
   }
 }
 
-// Create singleton instance
-const apiService = new ApiService();
-
-// Export as default
-export default apiService;
-
-// Also named export for compatibility
-export { apiService };
+export const apiService = new ApiService();

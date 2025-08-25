@@ -1,13 +1,14 @@
 // src/components/common/Layout.tsx (Fixed - added proper default export)
 import React from 'react';
-// import { useAuth } from '../../hooks/useAuth';
+import { useSelector } from 'react-redux';
+import { selectUser } from '../../store/slices/authSlice';
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const { user } = useAuth();
+  const user = useSelector(selectUser);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -24,7 +25,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 {user?.firstName} {user?.lastName}
               </span>
               <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                {user?.roleDisplayName}
+                {user?.role}
               </span>
             </div>
           </div>
@@ -38,7 +39,3 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 };
 
 export default Layout;
-
-function useAuth(): { user: any; } {
-    throw new Error('Function not implemented.');
-}

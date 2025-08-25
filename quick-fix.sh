@@ -261,7 +261,7 @@ import { BusinessRole } from './types/auth.types';
 
 // Components
 import LoginForm from './components/auth/LoginForm';
-import ProtectedRoute from './components/auth/ProtectedRoute';
+
 import SuperAdminDashboard from './components/dashboard/SuperAdminDashboard';
 import { LoadingSpinner } from './components/common/LoadingSpinner';
 import ErrorBoundary from './components/common/ErrorBoundary';

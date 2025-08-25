@@ -1,8 +1,9 @@
 // src/components/auth/RegisterPage.tsx
 import React, { useState } from 'react';
 import { Navigate, Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth';
-import { RegisterRequest } from '../../services/auth.service';
+import { useSelector } from 'react-redux';
+import { selectIsAuthenticated } from '../../store/slices/authSlice';
+import authService, { RegisterRequest } from '../../services/auth.service';
 import './RegisterPage.css';
 
 const RegisterPage: React.FC = () => {
@@ -23,7 +24,7 @@ const RegisterPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const { registerUser, isAuthenticated } = useAuth();
+  const isAuthenticated = useSelector(selectIsAuthenticated);
   const navigate = useNavigate();
 
   // Redirect if already authenticated
@@ -93,13 +94,14 @@ const RegisterPage: React.FC = () => {
     setLoading(true);
 
     try {
-      await registerUser(formData);
+      await authService.register(formData);
       // Show success message or redirect to login
-      navigate('/login', {
-        state: {
-          message: 'Registration successful! Please login with your credentials.'
-        }
-      });
+      navigate('/login',
+        {
+          state: {
+            message: 'Registration successful! Please login with your credentials.'
+          }
+        });
     } catch (err: any) {
       setError(err.message || 'Registration failed. Please try again.');
     } finally {

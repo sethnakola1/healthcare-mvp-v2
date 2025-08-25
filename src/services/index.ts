@@ -13,7 +13,6 @@ export { hospitalService as namedHospitalService } from './hospital.service';
 export { patientService as namedPatientService } from './patient.service';
 
 // Export types
-export type { ApiResponse, PaginatedResponse } from './api.service';
 export type { AppointmentDto, CreateAppointmentRequest } from './appointment.service';
 export type { DoctorDto, CreateDoctorRequest } from './doctor.service';
 export type { HospitalDto, CreateHospitalRequest } from './hospital.service';
